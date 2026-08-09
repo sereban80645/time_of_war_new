@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace "com.example.time_of_war"
-    compileSdkVersion 35
+    compileSdk 35
     buildToolsVersion "35.0.0"
 
     compileOptions {
@@ -21,8 +21,8 @@ android {
 
     defaultConfig {
         applicationId "com.example.time_of_war"
-        minSdkVersion 21
-        targetSdkVersion 35
+        minSdk 21
+        targetSdk 35
         versionCode 1
         versionName "1.0.0"
     }
