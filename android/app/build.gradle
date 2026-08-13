@@ -42,9 +42,13 @@ flutter {
 }
 
 
-// Disable AAR Metadata AGP Version Validation
-tasks.whenTaskAdded { task ->
-    if (task.name.contains("AarMetadata")) {
-        task.enabled = false
+
+
+// Force disable AarMetadata tasks before execution phase
+gradle.taskGraph.whenReady { graph ->
+    graph.allTasks.each { task ->
+        if (task.name.contains("AarMetadata")) {
+            task.enabled = false
+        }
     }
 }
