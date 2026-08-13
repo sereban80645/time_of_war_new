@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace "com.example.time_of_war"
-    compileSdkVersion 34
+    compileSdk = 36
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -24,7 +24,7 @@ android {
     defaultConfig {
         applicationId "com.example.time_of_war"
         minSdkVersion 21
-        targetSdkVersion 34
+        targetSdk = 36
         // Використовуємо нативні змінні сучасного плагіна Flutter
         versionCode flutter.versionCode
         versionName flutter.versionName
