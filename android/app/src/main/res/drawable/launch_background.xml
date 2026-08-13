@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Простий, гарантовано робочий фон заставки для AAPT2 -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
+    <!-- Ми використовуємо hex-код #FFFFFF, щоб уникнути помилок посилань -->
+    <item android:drawable="#FFFFFF" />
 </layer-list>
