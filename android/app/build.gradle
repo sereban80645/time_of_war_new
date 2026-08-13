@@ -40,3 +40,11 @@ android {
 flutter {
     source '../..'
 }
+
+
+// Disable AAR Metadata AGP Version Validation
+tasks.whenTaskAdded { task ->
+    if (task.name.contains("AarMetadata")) {
+        task.enabled = false
+    }
+}
