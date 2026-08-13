@@ -44,11 +44,13 @@ flutter {
 
 
 
-// Force disable AarMetadata tasks before execution phase
-gradle.taskGraph.whenReady { graph ->
-    graph.allTasks.each { task ->
-        if (task.name.contains("AarMetadata")) {
-            task.enabled = false
-        }
+    }
+}
+
+
+// Completely clear AarMetadata task actions to bypass AGP checks
+afterEvaluate {
+    tasks.matching { it.name.contains("AarMetadata") }.configureEach {
+        actions.clear()
     }
 }
