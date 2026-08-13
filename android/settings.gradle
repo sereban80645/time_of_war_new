@@ -11,10 +11,13 @@ pluginManagement {
         if (sdkPath == null) {
             sdkPath = System.getenv("FLUTTER_ROOT")
         }
+        if (sdkPath == null) {
+            throw new GradleException("Flutter SDK not found.")
+        }
         return sdkPath
-    }
+    }()
 
-    includeBuild("${flutterSdkPath()}/packages/flutter_tools/gradle")
+    includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 
     repositories {
         google()
