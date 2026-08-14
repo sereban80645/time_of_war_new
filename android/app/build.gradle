@@ -37,20 +37,14 @@ android {
     }
 }
 
+flutter
+
 flutter {
-    source '../..'
+    source \'../..\'
 }
 
 
 
 
-    }
-}
-
-
-// Completely clear AarMetadata task actions to bypass AGP checks
-afterEvaluate {
-    tasks.matching { it.name.contains("AarMetadata") }.configureEach {
-        actions.clear()
     }
 }
