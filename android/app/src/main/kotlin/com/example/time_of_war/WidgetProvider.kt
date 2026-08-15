@@ -3,8 +3,8 @@ package com.example.time_of_war
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
 import android.widget.RemoteViews
-import androidx.core.net.toUri
 import es.antonborri.home_widget.HomeWidgetProvider
 
 class WidgetProvider : HomeWidgetProvider() {
@@ -16,6 +16,7 @@ class WidgetProvider : HomeWidgetProvider() {
         widgetData: SharedPreferences
     ) {
         for (appWidgetId in appWidgetIds) {
+
             val views = RemoteViews(
                 context.packageName,
                 R.layout.widget_layout
@@ -29,7 +30,7 @@ class WidgetProvider : HomeWidgetProvider() {
             if (!imagePath.isNullOrEmpty()) {
                 views.setImageViewUri(
                     R.id.widget_image,
-                    imagePath.toUri()
+                    Uri.parse(imagePath)
                 )
             }
 
