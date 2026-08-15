@@ -53,7 +53,7 @@ Future<void> main() async {
     updateTaskUniqueName,
     updateTaskName,
     frequency: const Duration(hours: 1),
-    existingWorkPolicy: ExistingWorkPolicy.replace,
+    existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
   );
 
   runApp(const MyApp());
@@ -675,9 +675,6 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       _imagePath = finalPath;
     });
 
-    // ВАЖЛИВО:
-    // зберігаємо саме обрізане фото,
-    // а не старий pickedFile.path.
     await _saveSetting(
       'imagePath',
       finalPath,
