@@ -7,6 +7,7 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
+import 'update_scheduler.dart';
 
 const String updateTaskName = 'updateWidgetTask';
 const String updateTaskUniqueName = 'time_of_war_update';
