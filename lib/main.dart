@@ -39,25 +39,12 @@ void callbackDispatcher() {
       debugPrint('Background widget update error: $e');
       return false;
     }
-  });
-}
-
-Future<void> main() async {
+    
+  });Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Workmanager().initialize(
-    callbackDispatcher,
-    isInDebugMode: false,
-  );
-
-  await Workmanager().registerPeriodicTask(
-    updateTaskUniqueName,
-    updateTaskName,
-    frequency: const Duration(hours: 1),
-    existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
-  );
-
   runApp(const MyApp());
+  }
 }
 
 class MyApp extends StatelessWidget {
