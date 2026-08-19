@@ -6,46 +6,6 @@ import 'package:home_widget/home_widget.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:workmanager/workmanager.dart';
-import 'update_scheduler.dart';
-
-const String updateTaskName = 'updateWidgetTask';
-const String updateTaskUniqueName = 'time_of_war_update';
-
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    try {
-      final now = DateTime.now();
-
-      final diff2022 = now.difference(DateTime(2022, 2, 24, 5, 0));
-      final diff2014 = now.difference(DateTime(2014, 2, 20, 12, 0));
-
-      final text2022 =
-          '${diff2022.inDays}д. ${diff2022.inHours % 24}г.';
-      final text2014 =
-          '${diff2014.inDays}д. ${diff2014.inHours % 24}г.';
-
-      await HomeWidget.saveWidgetData('text_2022', text2022);
-      await HomeWidget.saveWidgetData('text_2014', text2014);
-
-      await HomeWidget.updateWidget(
-        name: 'WidgetProvider',
-        androidName: 'WidgetProvider',
-      );
-
-      return true;
-    } catch (e) {
-      debugPrint('Background widget update error: $e');
-      return false;
-    }
-    
-  });Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  runApp(const MyApp());
-  }
-}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -62,10 +22,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// ============================================================
-// ВІДЖЕТ
-// ============================================================
-
 class TimeOfWarWidgetRender extends StatelessWidget {
   final bool show2022;
   final bool show2014;
@@ -73,7 +29,6 @@ class TimeOfWarWidgetRender extends StatelessWidget {
   final String time2014;
   final double fontSize;
   final double strokeWidth;
-  final double opacity;
   final Color bgColor;
   final Color textColor;
   final Color strokeColor;
@@ -87,7 +42,6 @@ class TimeOfWarWidgetRender extends StatelessWidget {
     required this.time2014,
     required this.fontSize,
     required this.strokeWidth,
-    required this.opacity,
     required this.bgColor,
     required this.textColor,
     required this.strokeColor,
@@ -182,10 +136,6 @@ class TimeOfWarWidgetRender extends StatelessWidget {
   }
 }
 
-// ============================================================
-// ГОЛОВНИЙ ЕКРАН
-// ============================================================
-
 class TimeOfWarScreen extends StatefulWidget {
   const TimeOfWarScreen({super.key});
 
@@ -237,10 +187,6 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       (_) {
         if (!mounted) return;
         setState(() {});
-
-        if (DateTime.now().second == 0) {
-          _debouncedUpdate();
-        }
       },
     );
   }
@@ -251,10 +197,6 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
     _debounce?.cancel();
     super.dispose();
   }
-
-  // ==========================================================
-  // НАЛАШТУВАННЯ
-  // ==========================================================
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
@@ -317,33 +259,35 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
     );
   }
 
-  // ==========================================================
-  // ОНОВЛЕННЯ ВІДЖЕТА
-  // ==========================================================
+  Color _backgroundColor() {
+    return Color.fromRGBO(
+      _br.toInt(),
+      _bg.toInt(),
+      _bb.toInt(),
+      _opacity,
+    );
+  }
+
+  Color _textColor() {
+    return Color.fromRGBO(
+      _tr.toInt(),
+      _tg.toInt(),
+      _tb.toInt(),
+      1.0,
+    );
+  }
+
+  Color _strokeColor() {
+    return Color.fromRGBO(
+      _sr.toInt(),
+      _sg.toInt(),
+      _sb.toInt(),
+      1.0,
+    );
+  }
 
   Future<void> _updateHomeWidget() async {
     try {
-      final bgColor = Color.fromRGBO(
-        _br.toInt(),
-        _bg.toInt(),
-        _bb.toInt(),
-        _opacity,
-      );
-
-      final textColor = Color.fromRGBO(
-        _tr.toInt(),
-        _tg.toInt(),
-        _tb.toInt(),
-        1.0,
-      );
-
-      final strokeColor = Color.fromRGBO(
-        _sr.toInt(),
-        _sg.toInt(),
-        _sb.toInt(),
-        1.0,
-      );
-
       final time2022 =
           _calculateTimeDifference(_date2022Start);
 
@@ -360,6 +304,16 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         time2014,
       );
 
+      await HomeWidget.saveWidgetData(
+        'show2022',
+        _show2022,
+      );
+
+      await HomeWidget.saveWidgetData(
+        'show2014',
+        _show2014,
+      );
+
       await HomeWidget.renderFlutterWidget(
         TimeOfWarWidgetRender(
           show2022: _show2022,
@@ -368,10 +322,9 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
           time2014: time2014,
           fontSize: _fontSize * 2.5,
           strokeWidth: _strokeWidth * 2.5,
-          opacity: _opacity,
-          bgColor: bgColor,
-          textColor: textColor,
-          strokeColor: strokeColor,
+          bgColor: _backgroundColor(),
+          textColor: _textColor(),
+          strokeColor: _strokeColor(),
           imagePath: _imagePath,
         ),
         key: 'widget_image',
@@ -387,10 +340,6 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
     }
   }
 
-  // ==========================================================
-  // РОЗРАХУНОК ЧАСУ
-  // ==========================================================
-
   String _calculateTimeDifference(DateTime startDate) {
     final now = DateTime.now();
 
@@ -405,13 +354,13 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         hours += 24;
       }
 
-      var output = '${totalDays}д.';
+      var result = '${totalDays}д.';
 
       if (_showHour) {
-        output += ' ${hours}г.';
+        result += ' ${hours}г.';
       }
 
-      return output;
+      return result;
     }
 
     var years = now.year - startDate.year;
@@ -453,33 +402,19 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       years++;
     }
 
-    var output =
+    var result =
         '${years}р. ${months}міс. ${days}д.';
 
     if (_showHour) {
-      output += ' ${hours}г.';
+      result += ' ${hours}г.';
     }
 
-    return output;
+    return result;
   }
 
-  // ==========================================================
-  // ТЕКСТ З КОНТУРОМ
-  // ==========================================================
   Widget _buildOutlinedText(String text) {
-    final textColor = Color.fromRGBO(
-      _tr.toInt(),
-      _tg.toInt(),
-      _tb.toInt(),
-      1.0,
-    );
-
-    final strokeColor = Color.fromRGBO(
-      _sr.toInt(),
-      _sg.toInt(),
-      _sb.toInt(),
-      1.0,
-    );
+    final textColor = _textColor();
+    final strokeColor = _strokeColor();
 
     return Stack(
       children: [
@@ -506,17 +441,8 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
     );
   }
 
-  // ==========================================================
-  // PREVIEW
-  // ==========================================================
-
   Widget _buildWidgetPreview() {
-    final bgColor = Color.fromRGBO(
-      _br.toInt(),
-      _bg.toInt(),
-      _bb.toInt(),
-      _opacity,
-    );
+    final bgColor = _backgroundColor();
 
     return Padding(
       padding: const EdgeInsets.all(12),
@@ -536,9 +462,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(28),
-              color: _imagePath == null
-                  ? bgColor
-                  : null,
+              color: _imagePath == null ? bgColor : null,
               image: _imagePath != null
                   ? DecorationImage(
                       image: FileImage(
@@ -556,9 +480,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(28),
-                color: _imagePath != null
-                    ? bgColor
-                    : null,
+                color: _imagePath != null ? bgColor : null,
               ),
               padding: const EdgeInsets.symmetric(
                 vertical: 24,
@@ -610,13 +532,8 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
     );
   }
 
-  // ==========================================================
-  // ФОТО
-  // ==========================================================
-
   Future<String?> _cropImage(String path) async {
-    final cropped =
-        await ImageCropper().cropImage(
+    final cropped = await ImageCropper().cropImage(
       sourcePath: path,
       aspectRatio: const CropAspectRatio(
         ratioX: 1,
@@ -633,14 +550,14 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         ),
       ],
     );
+
     return cropped?.path;
   }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
 
-    final pickedFile =
-        await picker.pickImage(
+    final pickedFile = await picker.pickImage(
       source: ImageSource.gallery,
     );
 
@@ -653,6 +570,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
 
     final finalPath =
         cropped ?? pickedFile.path;
+
     if (!mounted) return;
 
     setState(() {
@@ -666,10 +584,6 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
 
     await _updateHomeWidget();
   }
-
-  // ==========================================================
-  // ОСНОВНИЙ BUILD
-  // ==========================================================
 
   @override
   Widget build(BuildContext context) {
@@ -696,15 +610,11 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             _buildWidgetPreview(),
             Expanded(
               child: Container(
-                decoration:
-                    const BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Color(0xFF1E1E1E),
-                  borderRadius:
-                      BorderRadius.only(
-                    topLeft:
-                        Radius.circular(24),
-                    topRight:
-                        Radius.circular(24),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
                   ),
                 ),
                 child: TabBarView(
@@ -722,10 +632,6 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
     );
   }
 
-  // ==========================================================
-  // ГОЛОВНЕ
-  // ==========================================================
-
   Widget _buildMainTab() {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -733,8 +639,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         SwitchListTile(
           title: const Text('Війна 2022'),
           value: _show2022,
-          activeColor:
-              Colors.deepPurpleAccent,
+          activeColor: Colors.deepPurpleAccent,
           onChanged: (value) {
             setState(() {
               _show2022 = value;
@@ -746,15 +651,13 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             );
           },
         ),
-
         SwitchListTile(
           title: const Text(
             'Війна 2014',
             softWrap: false,
           ),
           value: _show2014,
-          activeColor:
-              Colors.deepPurpleAccent,
+          activeColor: Colors.deepPurpleAccent,
           onChanged: (value) {
             setState(() {
               _show2014 = value;
@@ -766,13 +669,10 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             );
           },
         ),
-
         SwitchListTile(
-          title:
-              const Text('Показ годин'),
+          title: const Text('Показ годин'),
           value: _showHour,
-          activeColor:
-              Colors.deepPurpleAccent,
+          activeColor: Colors.deepPurpleAccent,
           onChanged: (value) {
             setState(() {
               _showHour = value;
@@ -784,13 +684,10 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             );
           },
         ),
-
         SwitchListTile(
-          title:
-              const Text('Облік в днях'),
+          title: const Text('Облік в днях'),
           value: _showDaysOnly,
-          activeColor:
-              Colors.deepPurpleAccent,
+          activeColor: Colors.deepPurpleAccent,
           onChanged: (value) {
             setState(() {
               _showDaysOnly = value;
@@ -802,24 +699,20 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             );
           },
         ),
-
         const Divider(
           color: Colors.white10,
         ),
-
         const Text(
           'Прозорість фону',
           style: TextStyle(
             fontSize: 14,
           ),
         ),
-
         Slider(
           value: _opacity,
           min: 0,
           max: 1,
-          activeColor:
-              Colors.deepPurpleAccent,
+          activeColor: Colors.deepPurpleAccent,
           onChanged: (value) {
             setState(() {
               _opacity = value;
@@ -831,20 +724,17 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             );
           },
         ),
-
         const Text(
           'Розмір тексту',
           style: TextStyle(
             fontSize: 14,
           ),
         ),
-
         Slider(
           value: _fontSize,
           min: 12,
           max: 40,
-          activeColor:
-              Colors.deepPurpleAccent,
+          activeColor: Colors.deepPurpleAccent,
           onChanged: (value) {
             setState(() {
               _fontSize = value;
@@ -856,20 +746,14 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             );
           },
         ),
-
         const SizedBox(height: 10),
-
         ElevatedButton.icon(
           onPressed: _pickImage,
           icon: const Icon(Icons.image),
-          label:
-              const Text('Вибрати ФОТО'),
-          style:
-              ElevatedButton.styleFrom(
-            backgroundColor:
-                const Color(0xFF2D2D2D),
-            padding:
-                const EdgeInsets.symmetric(
+          label: const Text('Вибрати ФОТО'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2D2D2D),
+            padding: const EdgeInsets.symmetric(
               vertical: 14,
             ),
           ),
@@ -877,10 +761,6 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       ],
     );
   }
-
-  // ==========================================================
-  // КОЛЬОРИ
-  // ==========================================================
 
   Widget _buildColorsTab() {
     return ListView(
@@ -890,13 +770,10 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
           'Колір тексту',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color:
-                Colors.deepPurpleAccent,
+            color: Colors.deepPurpleAccent,
           ),
         ),
-
         const SizedBox(height: 8),
-
         _buildRGBSliders(
           _tr,
           _tg,
@@ -913,23 +790,18 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             _saveSetting('tb', b);
           },
         ),
-
         const Divider(
           color: Colors.white10,
           height: 32,
         ),
-
         const Text(
           'Колір фону',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color:
-                Colors.deepPurpleAccent,
+            color: Colors.deepPurpleAccent,
           ),
         ),
-
         const SizedBox(height: 8),
-
         _buildRGBSliders(
           _br,
           _bg,
@@ -950,10 +822,6 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
     );
   }
 
-  // ==========================================================
-  // КОНТУР
-  // ==========================================================
-
   Widget _buildContourTab() {
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -962,13 +830,10 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
           'Колір контуру',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color:
-                Colors.deepPurpleAccent,
+            color: Colors.deepPurpleAccent,
           ),
         ),
-
         const SizedBox(height: 8),
-
         _buildRGBSliders(
           _sr,
           _sg,
@@ -985,25 +850,21 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             _saveSetting('sb', b);
           },
         ),
-
         const Divider(
           color: Colors.white10,
           height: 32,
         ),
-
         const Text(
           'Товщина контуру',
           style: TextStyle(
             fontSize: 14,
           ),
         ),
-
         Slider(
           value: _strokeWidth,
           min: 0,
           max: 8,
-          activeColor:
-              Colors.deepPurpleAccent,
+          activeColor: Colors.deepPurpleAccent,
           onChanged: (value) {
             setState(() {
               _strokeWidth = value;
@@ -1018,10 +879,6 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       ],
     );
   }
-
-  // ==========================================================
-  // RGB
-  // ==========================================================
 
   Widget _buildRGBSliders(
     double r,
@@ -1051,8 +908,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
                 value: r,
                 min: 0,
                 max: 255,
-                activeColor:
-                    Colors.red,
+                activeColor: Colors.red,
                 onChanged: (value) {
                   onChanged(
                     value,
@@ -1064,7 +920,6 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             ),
           ],
         ),
-
         Row(
           children: [
             const SizedBox(
@@ -1081,8 +936,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
                 value: g,
                 min: 0,
                 max: 255,
-                activeColor:
-                    Colors.green,
+                activeColor: Colors.green,
                 onChanged: (value) {
                   onChanged(
                     r,
@@ -1094,7 +948,6 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             ),
           ],
         ),
-
         Row(
           children: [
             const SizedBox(
@@ -1111,8 +964,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
                 value: b,
                 min: 0,
                 max: 255,
-                activeColor:
-                    Colors.blue,
+                activeColor: Colors.blue,
                 onChanged: (value) {
                   onChanged(
                     r,
@@ -1127,4 +979,9 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       ],
     );
   }
+}
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const MyApp());
 }
