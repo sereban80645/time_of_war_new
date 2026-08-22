@@ -13,8 +13,11 @@ class HourlyWidgetUpdateReceiver : BroadcastReceiver() {
 
         private const val REQUEST_CODE = 2022
 
-        private const val ACTION_HOURLY_UPDATE =
+        const val ACTION_HOURLY_UPDATE =
             "com.example.time_of_war.HOURLY_WIDGET_UPDATE"
+
+        const val ACTION_CANCEL =
+            "com.example.time_of_war.CANCEL_HOURLY_UPDATE"
 
         private const val BACKGROUND_ACTION =
             "es.antonborri.home_widget.action.BACKGROUND"
@@ -29,12 +32,7 @@ class HourlyWidgetUpdateReceiver : BroadcastReceiver() {
                 Context.MODE_PRIVATE
             )
 
-            val showHour = prefs.getBoolean(
-                "showHour",
-                true
-            )
-
-            if (!showHour) {
+            if (!prefs.getBoolean("showHour", true)) {
                 cancel(context)
                 return
             }
@@ -61,20 +59,17 @@ class HourlyWidgetUpdateReceiver : BroadcastReceiver() {
                 )
 
             val next = Calendar.getInstance().apply {
-
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
 
-                /*
-                 * Наступне оновлення рівно на xx:01.
-                 */
-                if (get(Calendar.MINUTE) >= 1) {
-                    add(Calendar.HOUR_OF_DAY, 1)
-                }
-
+                add(Calendar.HOUR_OF_DAY, 1)
                 set(Calendar.MINUTE, 1)
             }
 
+            /*
+             * Якщо зараз, наприклад, 14:35,
+             * наступний запуск буде 15:01.
+             */
             alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 next.timeInMillis,
@@ -115,6 +110,11 @@ class HourlyWidgetUpdateReceiver : BroadcastReceiver() {
         intent: Intent
     ) {
 
+        if (intent.action == ACTION_CANCEL) {
+            cancel(context)
+            return
+        }
+
         if (intent.action != ACTION_HOURLY_UPDATE) {
             return
         }
@@ -124,41 +124,31 @@ class HourlyWidgetUpdateReceiver : BroadcastReceiver() {
             Context.MODE_PRIVATE
         )
 
-        val showHour = prefs.getBoolean(
-            "showHour",
-            true
-        )
-
         /*
-         * Якщо години вимкнули —
-         * нічого не запускаємо і alarm прибираємо.
+         * Якщо "Показ годин" вимкнений —
+         * НІЯКОГО запуску Flutter.
          */
-        if (!showHour) {
+        if (!prefs.getBoolean("showHour", true)) {
             cancel(context)
             return
         }
 
         /*
-         * Передаємо керування HomeWidget Background Receiver.
-         *
-         * Він запустить Dart background callback,
-         * де буде створено нове widget_image.
+         * Передаємо подію в HomeWidget.
+         * HomeWidgetBackgroundReceiver
+         * запустить Dart callback.
          */
         val backgroundIntent = Intent(
             BACKGROUND_ACTION
         ).apply {
             setPackage(context.packageName)
-            data = android.net.Uri.parse(
-                UPDATE_URI
-            )
+            data = android.net.Uri.parse(UPDATE_URI)
         }
 
-        context.sendBroadcast(
-            backgroundIntent
-        )
+        context.sendBroadcast(backgroundIntent)
 
         /*
-         * Одразу плануємо наступне оновлення.
+         * Наступне оновлення знову буде xx:01.
          */
         schedule(context)
     }
