@@ -7,247 +7,6 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-@pragma('vm:entry-point')
-Future<void> backgroundCallback(Uri? uri) async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  if (uri?.host != 'hourly_update') {
-    return;
-  }
-
-  final prefs = await SharedPreferences.getInstance();
-
-  final showHour =
-      prefs.getBool('showHour') ?? true;
-
-  /*
-   * Якщо години вимкнені —
-   * нічого не робимо.
-   */
-  if (!showHour) {
-    return;
-  }
-
-  final show2022 =
-      prefs.getBool('show2022') ?? true;
-
-  final show2014 =
-      prefs.getBool('show2014') ?? false;
-
-  final showDaysOnly =
-      prefs.getBool('showDaysOnly') ?? false;
-
-  final fontSize =
-      prefs.getDouble('fontSize') ?? 22.0;
-
-  final strokeWidth =
-      prefs.getDouble('strokeWidth') ?? 3.0;
-
-  final opacity =
-      prefs.getDouble('opacity') ?? 0.5;
-
-  final br =
-      prefs.getDouble('br') ?? 30.0;
-
-  final bg =
-      prefs.getDouble('bg') ?? 30.0;
-
-  final bb =
-      prefs.getDouble('bb') ?? 30.0;
-
-  final tr =
-      prefs.getDouble('tr') ?? 255.0;
-
-  final tg =
-      prefs.getDouble('tg') ?? 255.0;
-
-  final tb =
-      prefs.getDouble('tb') ?? 255.0;
-
-  final sr =
-      prefs.getDouble('sr') ?? 0.0;
-
-  final sg =
-      prefs.getDouble('sg') ?? 0.0;
-
-  final sb =
-      prefs.getDouble('sb') ?? 0.0;
-
-  final imagePath =
-      prefs.getString('imagePath');
-
-  final date2022 =
-      DateTime(2022, 2, 24, 5, 0);
-
-  final date2014 =
-      DateTime(2014, 2, 20, 12, 0);
-
-  String calculateTime(
-    DateTime startDate,
-  ) {
-    final now = DateTime.now();
-
-    if (showDaysOnly) {
-      final difference =
-          now.difference(startDate);
-
-      final totalDays =
-          difference.inDays + 1;
-
-      var hours =
-          now.hour - startDate.hour;
-
-      if (hours < 0) {
-        hours += 24;
-      }
-
-      var result =
-          '${totalDays}д.';
-
-      if (showHour) {
-        result += ' ${hours}г.';
-      }
-
-      return result;
-    }
-
-    var years =
-        now.year - startDate.year;
-
-    var months =
-        now.month - startDate.month;
-
-    var days =
-        now.day - startDate.day;
-
-    var hours =
-        now.hour - startDate.hour;
-
-    if (hours < 0) {
-      days--;
-      hours += 24;
-    }
-
-    if (days < 0) {
-      months--;
-
-      final previousMonth =
-          DateTime(
-        now.year,
-        now.month,
-        0,
-      );
-
-      days += previousMonth.day;
-    }
-
-    if (months < 0) {
-      years--;
-      months += 12;
-    }
-
-    days++;
-
-    final daysInCurrentMonth =
-        DateTime(
-      now.year,
-      now.month + 1,
-      0,
-    ).day;
-
-    if (days > daysInCurrentMonth) {
-      days -= daysInCurrentMonth;
-      months++;
-    }
-
-    if (months > 11) {
-      months -= 12;
-      years++;
-    }
-
-    var result =
-        '${years}р. ${months}міс. ${days}д.';
-
-    if (showHour) {
-      result += ' ${hours}г.';
-    }
-
-    return result;
-  }
-
-  final time2022 =
-      calculateTime(date2022);
-
-  final time2014 =
-      calculateTime(date2014);
-
-  final bgColor =
-      Color.fromRGBO(
-    br.toInt(),
-    bg.toInt(),
-    bb.toInt(),
-    opacity,
-  );
-
-  final textColor =
-      Color.fromRGBO(
-    tr.toInt(),
-    tg.toInt(),
-    tb.toInt(),
-    1.0,
-  );
-
-  final strokeColor =
-      Color.fromRGBO(
-    sr.toInt(),
-    sg.toInt(),
-    sb.toInt(),
-    1.0,
-  );
-
-  await HomeWidget.saveWidgetData(
-    'text_2022',
-    time2022,
-  );
-
-  await HomeWidget.saveWidgetData(
-    'text_2014',
-    time2014,
-  );
-
-  await HomeWidget.saveWidgetData(
-    'show2022',
-    show2022,
-  );
-
-  await HomeWidget.saveWidgetData(
-    'show2014',
-    show2014,
-  );
-
-  await HomeWidget.renderFlutterWidget(
-    TimeOfWarWidgetRender(
-      show2022: show2022,
-      show2014: show2014,
-      time2022: time2022,
-      time2014: time2014,
-      fontSize: fontSize * 2.5,
-      strokeWidth: strokeWidth * 2.5,
-      bgColor: bgColor,
-      textColor: textColor,
-      strokeColor: strokeColor,
-      imagePath: imagePath,
-    ),
-    key: 'widget_image',
-    logicalSize: const Size(400, 400),
-  );
-
-  await HomeWidget.updateWidget(
-    name: 'WidgetProvider',
-    androidName: 'WidgetProvider',
-  );
-}
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -256,17 +15,14 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor:
-            const Color(0xFF121212),
+        scaffoldBackgroundColor: const Color(0xFF121212),
       ),
       home: const TimeOfWarScreen(),
     );
   }
 }
 
-class TimeOfWarWidgetRender
-    extends StatelessWidget {
-
+class TimeOfWarWidgetRender extends StatelessWidget {
   final bool show2022;
   final bool show2014;
   final String time2022;
@@ -292,9 +48,7 @@ class TimeOfWarWidgetRender
     this.imagePath,
   });
 
-  Widget _buildOutlinedText(
-    String text,
-  ) {
+  Widget _buildOutlinedText(String text) {
     return Stack(
       children: [
         Text(
@@ -303,12 +57,9 @@ class TimeOfWarWidgetRender
             fontSize: fontSize,
             fontWeight: FontWeight.bold,
             foreground: Paint()
-              ..style =
-                  PaintingStyle.stroke
-              ..strokeWidth =
-                  strokeWidth
-              ..color =
-                  strokeColor,
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = strokeWidth
+              ..color = strokeColor,
           ),
         ),
         Text(
@@ -324,23 +75,16 @@ class TimeOfWarWidgetRender
   }
 
   @override
-  Widget build(
-    BuildContext context,
-  ) {
+  Widget build(BuildContext context) {
     return Container(
       width: 400,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        borderRadius:
-            BorderRadius.circular(56),
-        color: imagePath == null
-            ? bgColor
-            : null,
+        borderRadius: BorderRadius.circular(56),
+        color: imagePath == null ? bgColor : null,
         image: imagePath != null
             ? DecorationImage(
-                image: FileImage(
-                  File(imagePath!),
-                ),
+                image: FileImage(File(imagePath!)),
                 fit: BoxFit.cover,
               )
             : null,
@@ -348,24 +92,17 @@ class TimeOfWarWidgetRender
       child: Container(
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          borderRadius:
-              BorderRadius.circular(56),
-          color: imagePath != null
-              ? bgColor
-              : null,
+          borderRadius: BorderRadius.circular(56),
+          color: imagePath != null ? bgColor : null,
         ),
-        padding:
-            const EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           vertical: 40,
           horizontal: 40,
         ),
         child: Column(
-          mainAxisSize:
-              MainAxisSize.min,
-          mainAxisAlignment:
-              MainAxisAlignment.center,
-          crossAxisAlignment:
-              CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             if (show2022) ...[
               Text(
@@ -373,35 +110,24 @@ class TimeOfWarWidgetRender
                 softWrap: false,
                 style: TextStyle(
                   color: Colors.white70,
-                  fontSize:
-                      fontSize * 0.5,
-                  fontWeight:
-                      FontWeight.w500,
+                  fontSize: fontSize * 0.5,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              _buildOutlinedText(
-                time2022,
-              ),
+              _buildOutlinedText(time2022),
             ],
             if (show2014) ...[
-              if (show2022)
-                const SizedBox(
-                  height: 20,
-                ),
+              if (show2022) const SizedBox(height: 20),
               Text(
                 'Війна з 2014 року:',
                 softWrap: false,
                 style: TextStyle(
                   color: Colors.white70,
-                  fontSize:
-                      fontSize * 0.5,
-                  fontWeight:
-                      FontWeight.w500,
+                  fontSize: fontSize * 0.5,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              _buildOutlinedText(
-                time2014,
-              ),
+              _buildOutlinedText(time2014),
             ],
           ],
         ),
@@ -410,20 +136,14 @@ class TimeOfWarWidgetRender
   }
 }
 
-class TimeOfWarScreen
-    extends StatefulWidget {
-  const TimeOfWarScreen({
-    super.key,
-  });
+class TimeOfWarScreen extends StatefulWidget {
+  const TimeOfWarScreen({super.key});
 
   @override
-  State<TimeOfWarScreen> createState() =>
-      _TimeOfWarScreenState();
+  State<TimeOfWarScreen> createState() => _TimeOfWarScreenState();
 }
 
-class _TimeOfWarScreenState
-    extends State<TimeOfWarScreen> {
-
+class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
   bool _show2022 = true;
   bool _show2014 = false;
   bool _showHour = true;
@@ -460,10 +180,6 @@ class _TimeOfWarScreenState
   void initState() {
     super.initState();
 
-    HomeWidget.registerBackgroundCallback(
-      backgroundCallback,
-    );
-
     _loadSettings();
 
     _timer = Timer.periodic(
@@ -484,80 +200,55 @@ class _TimeOfWarScreenState
   }
 
   Future<void> _loadSettings() async {
-    final prefs =
-        await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
 
     if (!mounted) return;
 
     setState(() {
-      _show2022 =
-          prefs.getBool('show2022') ??
-              true;
-
-      _show2014 =
-          prefs.getBool('show2014') ??
-              false;
-
-      _showHour =
-          prefs.getBool('showHour') ??
-              true;
-
+      _show2022 = prefs.getBool('show2022') ?? true;
+      _show2014 = prefs.getBool('show2014') ?? false;
+      _showHour = prefs.getBool('showHour') ?? true;
       _showDaysOnly =
-          prefs.getBool('showDaysOnly') ??
-              false;
+          prefs.getBool('showDaysOnly') ?? false;
 
       _fontSize =
-          prefs.getDouble('fontSize') ??
-              22.0;
+          prefs.getDouble('fontSize') ?? 22.0;
 
       _strokeWidth =
-          prefs.getDouble('strokeWidth') ??
-              3.0;
+          prefs.getDouble('strokeWidth') ?? 3.0;
 
       _opacity =
-          prefs.getDouble('opacity') ??
-              0.5;
+          prefs.getDouble('opacity') ?? 0.5;
 
       _br =
-          prefs.getDouble('br') ??
-              30.0;
+          prefs.getDouble('br') ?? 30.0;
 
       _bg =
-          prefs.getDouble('bg') ??
-              30.0;
+          prefs.getDouble('bg') ?? 30.0;
 
       _bb =
-          prefs.getDouble('bb') ??
-              30.0;
+          prefs.getDouble('bb') ?? 30.0;
 
       _tr =
-          prefs.getDouble('tr') ??
-              255.0;
+          prefs.getDouble('tr') ?? 255.0;
 
       _tg =
-          prefs.getDouble('tg') ??
-              255.0;
+          prefs.getDouble('tg') ?? 255.0;
 
       _tb =
-          prefs.getDouble('tb') ??
-              255.0;
+          prefs.getDouble('tb') ?? 255.0;
 
       _sr =
-          prefs.getDouble('sr') ??
-              0.0;
+          prefs.getDouble('sr') ?? 0.0;
 
       _sg =
-          prefs.getDouble('sg') ??
-              0.0;
+          prefs.getDouble('sg') ?? 0.0;
 
       _sb =
-          prefs.getDouble('sb') ??
-              0.0;
+          prefs.getDouble('sb') ?? 0.0;
 
       _imagePath =
-          prefs.getString(
-        'imagePath',
-      );
+          prefs.getString('imagePath');
     });
 
     await _updateHomeWidget();
@@ -594,9 +285,7 @@ class _TimeOfWarScreenState
     _debounce?.cancel();
 
     _debounce = Timer(
-      const Duration(
-        milliseconds: 500,
-      ),
+      const Duration(milliseconds: 500),
       () {
         _updateHomeWidget();
       },
@@ -668,28 +357,23 @@ class _TimeOfWarScreenState
           show2014: _show2014,
           time2022: time2022,
           time2014: time2014,
-          fontSize:
-              _fontSize * 2.5,
-          strokeWidth:
-              _strokeWidth * 2.5,
-          bgColor:
-              _backgroundColor(),
-          textColor:
-              _textColor(),
-          strokeColor:
-              _strokeColor(),
-          imagePath:
-              _imagePath,
+          fontSize: _fontSize * 2.5,
+          strokeWidth: _strokeWidth * 2.5,
+          bgColor: _backgroundColor(),
+          textColor: _textColor(),
+          strokeColor: _strokeColor(),
+          imagePath: _imagePath,
         ),
         key: 'widget_image',
-        logicalSize:
-            const Size(400, 400),
+        logicalSize: const Size(
+          400,
+          400,
+        ),
       );
 
       await HomeWidget.updateWidget(
         name: 'WidgetProvider',
-        androidName:
-            'WidgetProvider',
+        androidName: 'WidgetProvider',
       );
     } catch (e) {
       debugPrint(
@@ -711,8 +395,7 @@ class _TimeOfWarScreenState
           difference.inDays + 1;
 
       var hours =
-          now.hour -
-              startDate.hour;
+          now.hour - startDate.hour;
 
       if (hours < 0) {
         hours += 24;
@@ -730,20 +413,16 @@ class _TimeOfWarScreenState
     }
 
     var years =
-        now.year -
-            startDate.year;
+        now.year - startDate.year;
 
     var months =
-        now.month -
-            startDate.month;
+        now.month - startDate.month;
 
     var days =
-        now.day -
-            startDate.day;
+        now.day - startDate.day;
 
     var hours =
-        now.hour -
-            startDate.hour;
+        now.hour - startDate.hour;
 
     if (hours < 0) {
       days--;
@@ -778,10 +457,10 @@ class _TimeOfWarScreenState
       0,
     ).day;
 
-    if (days >
-        daysInCurrentMonth) {
+    if (days > daysInCurrentMonth) {
       days -=
           daysInCurrentMonth;
+
       months++;
     }
 
@@ -791,9 +470,7 @@ class _TimeOfWarScreenState
     }
 
     var result =
-        '${years}р. '
-        '${months}міс. '
-        '${days}д.';
+        '${years}р. ${months}міс. ${days}д.';
 
     if (_showHour) {
       result +=
@@ -835,8 +512,7 @@ class _TimeOfWarScreenState
             fontSize: _fontSize,
             fontWeight:
                 FontWeight.bold,
-            color:
-                textColor,
+            color: textColor,
           ),
         ),
       ],
@@ -874,23 +550,23 @@ class _TimeOfWarScreenState
                   BorderRadius.circular(
                 28,
               ),
-              color:
-                  _imagePath == null
-                      ? bgColor
-                      : null,
-              image:
-                  _imagePath != null
-                      ? DecorationImage(
-                          image:
-                              FileImage(
-                            File(
-                              _imagePath!,
-                            ),
-                          ),
-                          fit:
-                              BoxFit.cover,
-                        )
-                      : null,
+              color: _imagePath ==
+                      null
+                  ? bgColor
+                  : null,
+              image: _imagePath !=
+                      null
+                  ? DecorationImage(
+                      image:
+                          FileImage(
+                        File(
+                          _imagePath!,
+                        ),
+                      ),
+                      fit:
+                          BoxFit.cover,
+                    )
+                  : null,
               border:
                   Border.all(
                 color:
@@ -898,8 +574,7 @@ class _TimeOfWarScreenState
                 width: 1,
               ),
             ),
-            child:
-                Container(
+            child: Container(
               alignment:
                   Alignment.center,
               decoration:
@@ -908,18 +583,17 @@ class _TimeOfWarScreenState
                     BorderRadius.circular(
                   28,
                 ),
-                color:
-                    _imagePath != null
-                        ? bgColor
-                        : null,
+                color: _imagePath !=
+                        null
+                    ? bgColor
+                    : null,
               ),
               padding:
                   const EdgeInsets.symmetric(
                 vertical: 24,
                 horizontal: 16,
               ),
-              child:
-                  Column(
+              child: Column(
                 mainAxisSize:
                     MainAxisSize.min,
                 children: [
@@ -980,8 +654,7 @@ class _TimeOfWarScreenState
     String path,
   ) async {
     final cropped =
-        await ImageCropper()
-            .cropImage(
+        await ImageCropper().cropImage(
       sourcePath: path,
       aspectRatio:
           const CropAspectRatio(
@@ -1001,8 +674,7 @@ class _TimeOfWarScreenState
           initAspectRatio:
               CropAspectRatioPreset
                   .square,
-          lockAspectRatio:
-              true,
+          lockAspectRatio: true,
         ),
       ],
     );
@@ -1011,41 +683,67 @@ class _TimeOfWarScreenState
   }
 
   Future<void> _pickImage() async {
-    final picker =
-        ImagePicker();
+    try {
+      final picker =
+          ImagePicker();
 
-    final pickedFile =
-        await picker.pickImage(
-      source:
-          ImageSource.gallery,
-    );
+      final pickedFile =
+          await picker.pickImage(
+        source:
+            ImageSource.gallery,
+      );
 
-    if (pickedFile == null) {
-      return;
+      if (pickedFile == null) {
+        return;
+      }
+
+      final cropped =
+          await _cropImage(
+        pickedFile.path,
+      );
+
+      final finalPath =
+          cropped ??
+              pickedFile.path;
+
+      /*
+       * HomeWidget.saveImage() копіює
+       * вибране фото у власне сховище
+       * HomeWidget та повертає постійний
+       * абсолютний шлях до PNG.
+       */
+      final widgetImagePath =
+          await HomeWidget.saveImage(
+        'background_image',
+        FileImage(
+          File(finalPath),
+        ),
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _imagePath =
+            widgetImagePath;
+      });
+
+      final prefs =
+          await SharedPreferences
+              .getInstance();
+
+      await prefs.setString(
+        'imagePath',
+        widgetImagePath,
+      );
+
+      await _updateHomeWidget();
+    } catch (e) {
+      debugPrint(
+        'Image Error: $e',
+      );
     }
-
-    final cropped =
-        await _cropImage(
-      pickedFile.path,
-    );
-
-    final finalPath =
-        cropped ??
-            pickedFile.path;
-
-    if (!mounted) return;
-
-    setState(() {
-      _imagePath =
-          finalPath;
-    });
-
-    await _saveSetting(
-      'imagePath',
-      finalPath,
-    );
-
-    await _updateHomeWidget();
   }
 
   @override
@@ -1064,8 +762,7 @@ class _TimeOfWarScreenState
           bottom:
               const TabBar(
             indicatorColor:
-                Colors
-                    .deepPurpleAccent,
+                Colors.deepPurpleAccent,
             tabs: [
               Tab(
                 text: 'Головне',
@@ -1085,8 +782,7 @@ class _TimeOfWarScreenState
           children: [
             _buildWidgetPreview(),
             Expanded(
-              child:
-                  Container(
+              child: Container(
                 decoration:
                     const BoxDecoration(
                   color:
@@ -1132,8 +828,7 @@ class _TimeOfWarScreenState
           value:
               _show2022,
           activeColor:
-              Colors
-                  .deepPurpleAccent,
+              Colors.deepPurpleAccent,
           onChanged:
               (value) {
             setState(() {
@@ -1156,8 +851,7 @@ class _TimeOfWarScreenState
           value:
               _show2014,
           activeColor:
-              Colors
-                  .deepPurpleAccent,
+              Colors.deepPurpleAccent,
           onChanged:
               (value) {
             setState(() {
@@ -1179,8 +873,7 @@ class _TimeOfWarScreenState
           value:
               _showHour,
           activeColor:
-              Colors
-                  .deepPurpleAccent,
+              Colors.deepPurpleAccent,
           onChanged:
               (value) {
             setState(() {
@@ -1202,8 +895,7 @@ class _TimeOfWarScreenState
           value:
               _showDaysOnly,
           activeColor:
-              Colors
-                  .deepPurpleAccent,
+              Colors.deepPurpleAccent,
           onChanged:
               (value) {
             setState(() {
@@ -1218,8 +910,7 @@ class _TimeOfWarScreenState
           },
         ),
         const Divider(
-          color:
-              Colors.white10,
+          color: Colors.white10,
         ),
         const Text(
           'Прозорість фону',
@@ -1234,8 +925,7 @@ class _TimeOfWarScreenState
           min: 0,
           max: 1,
           activeColor:
-              Colors
-                  .deepPurpleAccent,
+              Colors.deepPurpleAccent,
           onChanged:
               (value) {
             setState(() {
@@ -1262,8 +952,7 @@ class _TimeOfWarScreenState
           min: 12,
           max: 40,
           activeColor:
-              Colors
-                  .deepPurpleAccent,
+              Colors.deepPurpleAccent,
           onChanged:
               (value) {
             setState(() {
@@ -1319,8 +1008,7 @@ class _TimeOfWarScreenState
             fontWeight:
                 FontWeight.bold,
             color:
-                Colors
-                    .deepPurpleAccent,
+                Colors.deepPurpleAccent,
           ),
         ),
         const SizedBox(
@@ -1330,7 +1018,11 @@ class _TimeOfWarScreenState
           _tr,
           _tg,
           _tb,
-          (r, g, b) {
+          (
+            r,
+            g,
+            b,
+          ) {
             setState(() {
               _tr = r;
               _tg = g;
@@ -1341,10 +1033,12 @@ class _TimeOfWarScreenState
               'tr',
               r,
             );
+
             _saveSetting(
               'tg',
               g,
             );
+
             _saveSetting(
               'tb',
               b,
@@ -1352,8 +1046,7 @@ class _TimeOfWarScreenState
           },
         ),
         const Divider(
-          color:
-              Colors.white10,
+          color: Colors.white10,
           height: 32,
         ),
         const Text(
@@ -1363,8 +1056,7 @@ class _TimeOfWarScreenState
             fontWeight:
                 FontWeight.bold,
             color:
-                Colors
-                    .deepPurpleAccent,
+                Colors.deepPurpleAccent,
           ),
         ),
         const SizedBox(
@@ -1374,7 +1066,11 @@ class _TimeOfWarScreenState
           _br,
           _bg,
           _bb,
-          (r, g, b) {
+          (
+            r,
+            g,
+            b,
+          ) {
             setState(() {
               _br = r;
               _bg = g;
@@ -1385,10 +1081,12 @@ class _TimeOfWarScreenState
               'br',
               r,
             );
+
             _saveSetting(
               'bg',
               g,
             );
+
             _saveSetting(
               'bb',
               b,
@@ -1411,8 +1109,7 @@ class _TimeOfWarScreenState
             fontWeight:
                 FontWeight.bold,
             color:
-                Colors
-                    .deepPurpleAccent,
+                Colors.deepPurpleAccent,
           ),
         ),
         const SizedBox(
@@ -1422,7 +1119,11 @@ class _TimeOfWarScreenState
           _sr,
           _sg,
           _sb,
-          (r, g, b) {
+          (
+            r,
+            g,
+            b,
+          ) {
             setState(() {
               _sr = r;
               _sg = g;
@@ -1433,10 +1134,12 @@ class _TimeOfWarScreenState
               'sr',
               r,
             );
+
             _saveSetting(
               'sg',
               g,
             );
+
             _saveSetting(
               'sb',
               b,
@@ -1444,8 +1147,7 @@ class _TimeOfWarScreenState
           },
         ),
         const Divider(
-          color:
-              Colors.white10,
+          color: Colors.white10,
           height: 32,
         ),
         const Text(
@@ -1461,8 +1163,7 @@ class _TimeOfWarScreenState
           min: 0,
           max: 8,
           activeColor:
-              Colors
-                  .deepPurpleAccent,
+              Colors.deepPurpleAccent,
           onChanged:
               (value) {
             setState(() {
@@ -1507,9 +1208,9 @@ class _TimeOfWarScreenState
               ),
             ),
             Expanded(
-              child:
-                  Slider(
-                value: r,
+              child: Slider(
+                value:
+                    r,
                 min: 0,
                 max: 255,
                 activeColor:
@@ -1541,9 +1242,9 @@ class _TimeOfWarScreenState
               ),
             ),
             Expanded(
-              child:
-                  Slider(
-                value: g,
+              child: Slider(
+                value:
+                    g,
                 min: 0,
                 max: 255,
                 activeColor:
@@ -1575,9 +1276,9 @@ class _TimeOfWarScreenState
               ),
             ),
             Expanded(
-              child:
-                  Slider(
-                value: b,
+              child: Slider(
+                value:
+                    b,
                 min: 0,
                 max: 255,
                 activeColor:
@@ -1601,10 +1302,6 @@ class _TimeOfWarScreenState
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  await HomeWidget.registerBackgroundCallback(
-    backgroundCallback,
-  );
 
   runApp(
     const MyApp(),
