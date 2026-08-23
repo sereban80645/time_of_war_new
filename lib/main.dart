@@ -76,11 +76,10 @@ class TimeOfWarWidgetRender extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String? validImagePath = imagePath != null &&
-            imagePath!.isNotEmpty &&
-            File(imagePath!).existsSync()
-        ? imagePath
-        : null;
+    final hasImage =
+        imagePath != null &&
+        imagePath!.isNotEmpty &&
+        File(imagePath!).existsSync();
 
     return Container(
       width: 400,
@@ -88,10 +87,10 @@ class TimeOfWarWidgetRender extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(56),
-        color: validImagePath == null ? bgColor : null,
-        image: validImagePath != null
+        color: hasImage ? null : bgColor,
+        image: hasImage
             ? DecorationImage(
-                image: FileImage(File(validImagePath)),
+                image: FileImage(File(imagePath!)),
                 fit: BoxFit.cover,
               )
             : null,
@@ -102,9 +101,7 @@ class TimeOfWarWidgetRender extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(56),
-          color: validImagePath != null
-              ? bgColor.withValues(alpha: bgColor.a * 0.35)
-              : null,
+          color: hasImage ? bgColor : null,
         ),
         padding: const EdgeInsets.symmetric(
           vertical: 40,
@@ -264,9 +261,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
 
     _debounce = Timer(
       const Duration(milliseconds: 500),
-      () {
-        _updateHomeWidget();
-      },
+      _updateHomeWidget,
     );
   }
 
@@ -325,13 +320,15 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         _show2014,
       );
 
-      String? imagePath;
+      await HomeWidget.saveWidgetData(
+        'showHour',
+        _showHour,
+      );
 
-      if (_imagePath != null &&
-          _imagePath!.isNotEmpty &&
-          File(_imagePath!).existsSync()) {
-        imagePath = _imagePath;
-      }
+      await HomeWidget.saveWidgetData(
+        'showDaysOnly',
+        _showDaysOnly,
+      );
 
       await HomeWidget.renderFlutterWidget(
         TimeOfWarWidgetRender(
@@ -344,7 +341,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
           bgColor: _backgroundColor(),
           textColor: _textColor(),
           strokeColor: _strokeColor(),
-          imagePath: imagePath,
+          imagePath: _imagePath,
         ),
         key: 'widget_rendered',
         logicalSize: const Size(400, 400),
@@ -504,11 +501,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(28),
-                color: hasImage
-                    ? bgColor.withValues(
-                        alpha: bgColor.a * 0.35,
-                      )
-                    : null,
+                color: hasImage ? bgColor : null,
               ),
               padding: const EdgeInsets.symmetric(
                 vertical: 24,
@@ -600,32 +593,14 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       final finalPath =
           cropped ?? pickedFile.path;
 
-      final sourceFile = File(finalPath);
-
-      if (!sourceFile.existsSync()) {
-        debugPrint(
-          'Background image error: source file does not exist',
-        );
-        return;
-      }
-
       final savedPath = await HomeWidget.saveImage(
         'widget_background',
-        FileImage(sourceFile),
+        FileImage(File(finalPath)),
       );
 
       if (savedPath.isEmpty) {
         debugPrint(
-          'Background image error: HomeWidget returned empty path',
-        );
-        return;
-      }
-
-      final savedFile = File(savedPath);
-
-      if (!savedFile.existsSync()) {
-        debugPrint(
-          'Background image error: saved file does not exist: $savedPath',
+          'HomeWidget Error: background image path is empty',
         );
         return;
       }
