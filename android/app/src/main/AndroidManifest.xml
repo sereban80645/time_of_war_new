@@ -9,7 +9,7 @@
     <application
         android:label="time_of_war"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/ic_launcher">
 
         <activity
             android:name=".MainActivity"
@@ -34,7 +34,6 @@
 
         </activity>
 
-        <!-- Основний App Widget -->
         <receiver
             android:name=".WidgetProvider"
             android:exported="true">
@@ -50,12 +49,10 @@
 
         </receiver>
 
-        <!-- Наш щогодинний будильник -->
         <receiver
             android:name=".HourlyWidgetUpdateReceiver"
             android:exported="false" />
 
-        <!-- HomeWidget background receiver -->
         <receiver
             android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver"
             android:exported="true">
