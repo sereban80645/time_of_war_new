@@ -76,10 +76,11 @@ class TimeOfWarWidgetRender extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage =
-        imagePath != null &&
-        imagePath!.isNotEmpty &&
-        File(imagePath!).existsSync();
+    final String? validImagePath = imagePath != null &&
+            imagePath!.isNotEmpty &&
+            File(imagePath!).existsSync()
+        ? imagePath
+        : null;
 
     return Container(
       width: 400,
@@ -87,10 +88,10 @@ class TimeOfWarWidgetRender extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(56),
-        color: hasImage ? null : bgColor,
-        image: hasImage
+        color: validImagePath == null ? bgColor : null,
+        image: validImagePath != null
             ? DecorationImage(
-                image: FileImage(File(imagePath!)),
+                image: FileImage(File(validImagePath)),
                 fit: BoxFit.cover,
               )
             : null,
@@ -101,7 +102,9 @@ class TimeOfWarWidgetRender extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(56),
-          color: hasImage ? bgColor : null,
+          color: validImagePath != null
+              ? bgColor.withValues(alpha: bgColor.a * 0.35)
+              : null,
         ),
         padding: const EdgeInsets.symmetric(
           vertical: 40,
@@ -302,8 +305,6 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       final time2014 =
           _calculateTimeDifference(_date2014Start);
 
-      final imagePath = _imagePath;
-
       await HomeWidget.saveWidgetData(
         'text_2022',
         time2022,
@@ -323,6 +324,14 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         'show2014',
         _show2014,
       );
+
+      String? imagePath;
+
+      if (_imagePath != null &&
+          _imagePath!.isNotEmpty &&
+          File(_imagePath!).existsSync()) {
+        imagePath = _imagePath;
+      }
 
       await HomeWidget.renderFlutterWidget(
         TimeOfWarWidgetRender(
@@ -495,7 +504,11 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(28),
-                color: hasImage ? bgColor : null,
+                color: hasImage
+                    ? bgColor.withValues(
+                        alpha: bgColor.a * 0.35,
+                      )
+                    : null,
               ),
               padding: const EdgeInsets.symmetric(
                 vertical: 24,
@@ -587,14 +600,32 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       final finalPath =
           cropped ?? pickedFile.path;
 
+      final sourceFile = File(finalPath);
+
+      if (!sourceFile.existsSync()) {
+        debugPrint(
+          'Background image error: source file does not exist',
+        );
+        return;
+      }
+
       final savedPath = await HomeWidget.saveImage(
         'widget_background',
-        FileImage(File(finalPath)),
+        FileImage(sourceFile),
       );
 
       if (savedPath.isEmpty) {
         debugPrint(
-          'HomeWidget Error: background image path is empty',
+          'Background image error: HomeWidget returned empty path',
+        );
+        return;
+      }
+
+      final savedFile = File(savedPath);
+
+      if (!savedFile.existsSync()) {
+        debugPrint(
+          'Background image error: saved file does not exist: $savedPath',
         );
         return;
       }
