@@ -7,10 +7,10 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const DateTime date2022Start =
+final DateTime date2022Start =
     DateTime(2022, 2, 24, 5, 0);
 
-const DateTime date2014Start =
+final DateTime date2014Start =
     DateTime(2014, 2, 20, 12, 0);
 
 String calculateTimeDifference(
