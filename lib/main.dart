@@ -22,7 +22,6 @@ String calculateTimeDifference(
 
   if (showDaysOnly) {
     final difference = now.difference(startDate);
-
     final totalDays = difference.inDays + 1;
 
     var hours = now.hour - startDate.hour;
@@ -170,80 +169,79 @@ class TimeOfWarWidgetRender extends StatelessWidget {
         imagePath!.isNotEmpty &&
         File(imagePath!).existsSync();
 
-    return Container(
-      width: 400,
-      height: 400,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        borderRadius:
-            BorderRadius.circular(56),
-        color:
-            hasImage ? null : bgColor,
-        image: hasImage
-            ? DecorationImage(
-                image: FileImage(
-                  File(imagePath!),
-                ),
-                fit: BoxFit.cover,
-              )
-            : null,
-      ),
+    return ClipRRect(
+      borderRadius:
+          BorderRadius.circular(56),
       child: Container(
-        width: double.infinity,
-        height: double.infinity,
+        width: 400,
+        height: 400,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          borderRadius:
-              BorderRadius.circular(56),
           color:
-              hasImage ? bgColor : null,
+              hasImage ? null : bgColor,
+          image: hasImage
+              ? DecorationImage(
+                  image: FileImage(
+                    File(imagePath!),
+                  ),
+                  fit: BoxFit.cover,
+                )
+              : null,
         ),
-        padding:
-            const EdgeInsets.symmetric(
-          vertical: 40,
-          horizontal: 40,
-        ),
-        child: Column(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
-          children: [
-            if (show2022) ...[
-              Text(
-                'Повномасштабна війна:',
-                softWrap: false,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize:
-                      fontSize * 0.5,
-                  fontWeight:
-                      FontWeight.w500,
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          alignment: Alignment.center,
+          color: hasImage
+              ? bgColor
+              : Colors.transparent,
+          padding:
+              const EdgeInsets.symmetric(
+            vertical: 40,
+            horizontal: 40,
+          ),
+          child: Column(
+            mainAxisAlignment:
+                MainAxisAlignment.center,
+            children: [
+              if (show2022) ...[
+                Text(
+                  'Повномасштабна війна:',
+                  softWrap: false,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize:
+                        fontSize * 0.5,
+                    fontWeight:
+                        FontWeight.w500,
+                  ),
                 ),
-              ),
-              _buildOutlinedText(
-                time2022,
-              ),
+                _buildOutlinedText(
+                  time2022,
+                ),
+              ],
+              if (show2014) ...[
+                if (show2022)
+                  const SizedBox(
+                    height: 20,
+                  ),
+                Text(
+                  'Війна з 2014 року:',
+                  softWrap: false,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize:
+                        fontSize * 0.5,
+                    fontWeight:
+                        FontWeight.w500,
+                  ),
+                ),
+                _buildOutlinedText(
+                  time2014,
+                ),
+              ],
             ],
-            if (show2014) ...[
-              if (show2022)
-                const SizedBox(
-                  height: 20,
-                ),
-              Text(
-                'Війна з 2014 року:',
-                softWrap: false,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize:
-                      fontSize * 0.5,
-                  fontWeight:
-                      FontWeight.w500,
-                ),
-              ),
-              _buildOutlinedText(
-                time2014,
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -251,7 +249,9 @@ class TimeOfWarWidgetRender extends StatelessWidget {
 }
 
 @pragma('vm:entry-point')
-Future<void> backgroundCallback(Uri? uri) async {
+Future<void> backgroundCallback(
+  Uri? uri,
+) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
@@ -383,30 +383,35 @@ Future<void> backgroundCallback(Uri? uri) async {
 
     await HomeWidget.renderFlutterWidget(
       TimeOfWarWidgetRender(
-        show2022: show2022 ?? true,
-        show2014: show2014 ?? false,
+        show2022:
+            show2022 ?? true,
+        show2014:
+            show2014 ?? false,
         time2022: time2022,
         time2014: time2014,
         fontSize:
             (fontSize ?? 22.0) * 2.5,
         strokeWidth:
             (strokeWidth ?? 3.0) * 2.5,
-        bgColor: Color.fromRGBO(
-          (br ?? 30.0).toInt(),
-          (bg ?? 30.0).toInt(),
-          (bb ?? 30.0).toInt(),
+        bgColor:
+            Color.fromRGBO(
+          (br ?? 30.0).round(),
+          (bg ?? 30.0).round(),
+          (bb ?? 30.0).round(),
           opacity ?? 0.5,
         ),
-        textColor: Color.fromRGBO(
-          (tr ?? 255.0).toInt(),
-          (tg ?? 255.0).toInt(),
-          (tb ?? 255.0).toInt(),
+        textColor:
+            Color.fromRGBO(
+          (tr ?? 255.0).round(),
+          (tg ?? 255.0).round(),
+          (tb ?? 255.0).round(),
           1.0,
         ),
-        strokeColor: Color.fromRGBO(
-          (sr ?? 0.0).toInt(),
-          (sg ?? 0.0).toInt(),
-          (sb ?? 0.0).toInt(),
+        strokeColor:
+            Color.fromRGBO(
+          (sr ?? 0.0).round(),
+          (sg ?? 0.0).round(),
+          (sb ?? 0.0).round(),
           1.0,
         ),
         imagePath: imagePath,
@@ -438,7 +443,6 @@ class TimeOfWarScreen
 
 class _TimeOfWarScreenState
     extends State<TimeOfWarScreen> {
-
   bool _show2022 = true;
   bool _show2014 = false;
   bool _showHour = true;
@@ -466,6 +470,7 @@ class _TimeOfWarScreenState
   Timer? _debounce;
 
   bool _widgetUpdateRunning = false;
+  bool _widgetUpdateQueued = false;
 
   @override
   void initState() {
@@ -474,7 +479,7 @@ class _TimeOfWarScreenState
     _loadSettings();
 
     _timer = Timer.periodic(
-      const Duration(seconds: 1),
+      const Duration(minutes: 1),
       (_) {
         if (!mounted) return;
 
@@ -501,45 +506,31 @@ class _TimeOfWarScreenState
 
     setState(() {
       _show2022 =
-          prefs.getBool(
-                'show2022',
-              ) ??
+          prefs.getBool('show2022') ??
               true;
 
       _show2014 =
-          prefs.getBool(
-                'show2014',
-              ) ??
+          prefs.getBool('show2014') ??
               false;
 
       _showHour =
-          prefs.getBool(
-                'showHour',
-              ) ??
+          prefs.getBool('showHour') ??
               true;
 
       _showDaysOnly =
-          prefs.getBool(
-                'showDaysOnly',
-              ) ??
+          prefs.getBool('showDaysOnly') ??
               false;
 
       _fontSize =
-          prefs.getDouble(
-                'fontSize',
-              ) ??
+          prefs.getDouble('fontSize') ??
               22.0;
 
       _strokeWidth =
-          prefs.getDouble(
-                'strokeWidth',
-              ) ??
+          prefs.getDouble('strokeWidth') ??
               3.0;
 
       _opacity =
-          prefs.getDouble(
-                'opacity',
-              ) ??
+          prefs.getDouble('opacity') ??
               0.5;
 
       _br =
@@ -580,8 +571,8 @@ class _TimeOfWarScreenState
 
       _imagePath =
           prefs.getString(
-            'imagePath',
-          );
+        'imagePath',
+      );
     });
 
     await _updateHomeWidget();
@@ -622,12 +613,15 @@ class _TimeOfWarScreenState
       const Duration(
         milliseconds: 300,
       ),
-      _updateHomeWidget,
+      () {
+        _updateHomeWidget();
+      },
     );
   }
 
   Future<void> _updateHomeWidget() async {
     if (_widgetUpdateRunning) {
+      _widgetUpdateQueued = true;
       return;
     }
 
@@ -738,12 +732,23 @@ class _TimeOfWarScreenState
         _sb,
       );
 
-      await HomeWidget.saveWidgetData<String?>(
-        'imagePath',
-        _imagePath,
-      );
+      if (_imagePath != null &&
+          _imagePath!.isNotEmpty) {
+        await HomeWidget
+            .saveWidgetData<String>(
+          'imagePath',
+          _imagePath!,
+        );
+      } else {
+        await HomeWidget
+            .saveWidgetData<String?>(
+          'imagePath',
+          null,
+        );
+      }
 
-      await HomeWidget.renderFlutterWidget(
+      await HomeWidget
+          .renderFlutterWidget(
         TimeOfWarWidgetRender(
           show2022: _show2022,
           show2014: _show2014,
@@ -775,34 +780,38 @@ class _TimeOfWarScreenState
         'HomeWidget Error: $e',
       );
     } finally {
-      _widgetUpdateRunning =
-          false;
+      _widgetUpdateRunning = false;
+
+      if (_widgetUpdateQueued) {
+        _widgetUpdateQueued = false;
+        _scheduleWidgetUpdate();
+      }
     }
   }
 
   Color _backgroundColor() {
     return Color.fromRGBO(
-      _br.toInt(),
-      _bg.toInt(),
-      _bb.toInt(),
+      _br.round(),
+      _bg.round(),
+      _bb.round(),
       _opacity,
     );
   }
 
   Color _textColor() {
     return Color.fromRGBO(
-      _tr.toInt(),
-      _tg.toInt(),
-      _tb.toInt(),
+      _tr.round(),
+      _tg.round(),
+      _tb.round(),
       1.0,
     );
   }
 
   Color _strokeColor() {
     return Color.fromRGBO(
-      _sr.toInt(),
-      _sg.toInt(),
-      _sb.toInt(),
+      _sr.round(),
+      _sg.round(),
+      _sb.round(),
       1.0,
     );
   }
@@ -914,8 +923,6 @@ class _TimeOfWarScreenState
           ),
         ),
         body: Column(
-          mainAxisSize:
-              MainAxisSize.min,
           children: [
             _buildWidgetPreview(),
             Expanded(
@@ -969,102 +976,104 @@ class _TimeOfWarScreenState
             ),
           ),
           const SizedBox(height: 6),
-          Container(
-            width: 400,
-            alignment:
-                Alignment.center,
-            decoration:
-                BoxDecoration(
-              borderRadius:
-                  BorderRadius.circular(28),
-              color:
-                  hasImage
-                      ? null
-                      : _backgroundColor(),
-              image:
-                  hasImage
-                      ? DecorationImage(
-                          image: FileImage(
-                            File(_imagePath!),
-                          ),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-              border:
-                  Border.all(
-                color:
-                    Colors.white10,
-                width: 1,
-              ),
-            ),
+          ClipRRect(
+            borderRadius:
+                BorderRadius.circular(28),
             child: Container(
+              width: 400,
               alignment:
                   Alignment.center,
               decoration:
                   BoxDecoration(
-                borderRadius:
-                    BorderRadius.circular(28),
                 color:
                     hasImage
-                        ? _backgroundColor()
+                        ? null
+                        : _backgroundColor(),
+                image:
+                    hasImage
+                        ? DecorationImage(
+                            image: FileImage(
+                              File(
+                                _imagePath!,
+                              ),
+                            ),
+                            fit:
+                                BoxFit.cover,
+                          )
                         : null,
+                border:
+                    Border.all(
+                  color:
+                      Colors.white10,
+                  width: 1,
+                ),
               ),
-              padding:
-                  const EdgeInsets.symmetric(
-                vertical: 24,
-                horizontal: 16,
-              ),
-              child: Column(
-                mainAxisSize:
-                    MainAxisSize.min,
-                children: [
-                  if (_show2022) ...[
-                    const Text(
-                      'Повномасштабна війна:',
-                      softWrap: false,
-                      style:
-                          TextStyle(
-                        color:
-                            Colors.white70,
-                        fontSize: 13,
-                        fontWeight:
-                            FontWeight.w500,
+              child: Container(
+                alignment:
+                    Alignment.center,
+                decoration:
+                    BoxDecoration(
+                  color: hasImage
+                      ? _backgroundColor()
+                      : Colors.transparent,
+                ),
+                padding:
+                    const EdgeInsets.symmetric(
+                  vertical: 24,
+                  horizontal: 16,
+                ),
+                child: Column(
+                  mainAxisSize:
+                      MainAxisSize.min,
+                  children: [
+                    if (_show2022) ...[
+                      const Text(
+                        'Повномасштабна війна:',
+                        softWrap: false,
+                        style:
+                            TextStyle(
+                          color:
+                              Colors.white70,
+                          fontSize: 13,
+                          fontWeight:
+                              FontWeight.w500,
+                        ),
                       ),
-                    ),
-                    _buildOutlinedText(
-                      calculateTimeDifference(
-                        date2022Start,
-                        _showHour,
-                        _showDaysOnly,
+                      _buildOutlinedText(
+                        calculateTimeDifference(
+                          date2022Start,
+                          _showHour,
+                          _showDaysOnly,
+                        ),
                       ),
-                    ),
+                    ],
+                    if (_show2014) ...[
+                      if (_show2022)
+                        const SizedBox(
+                          height: 10,
+                        ),
+                      const Text(
+                        'Війна з 2014 року:',
+                        softWrap: false,
+                        style:
+                            TextStyle(
+                          color:
+                              Colors.white70,
+                          fontSize: 13,
+                          fontWeight:
+                              FontWeight.w500,
+                        ),
+                      ),
+                      _buildOutlinedText(
+                        calculateTimeDifference(
+                          date2014Start,
+                          _showHour,
+                          _showDaysOnly,
+                        ),
+                      ),
+                    ],
                   ],
-                  if (_show2014) ...[
-                    if (_show2022)
-                      const SizedBox(
-                        height: 10,
-                      ),
-                    const Text(
-                      'Війна з 2014 року:',
-                      softWrap: false,
-                      style:
-                          TextStyle(
-                        color:
-                            Colors.white70,
-                        fontSize: 13,
-                        fontWeight:
-                            FontWeight.w500,
-                      ),
-                    ),
-                    _buildOutlinedText(
-                      calculateTimeDifference(
-                        date2014Start,
-                        _showHour,
-                        _showDaysOnly,
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
             ),
           ),
@@ -1081,22 +1090,25 @@ class _TimeOfWarScreenState
         Text(
           text,
           style: TextStyle(
-            fontSize: _fontSize,
+            fontSize:
+                _fontSize,
             fontWeight:
                 FontWeight.bold,
-            foreground: Paint()
-              ..style =
-                  PaintingStyle.stroke
-              ..strokeWidth =
-                  _strokeWidth
-              ..color =
-                  _strokeColor(),
+            foreground:
+                Paint()
+                  ..style =
+                      PaintingStyle.stroke
+                  ..strokeWidth =
+                      _strokeWidth
+                  ..color =
+                      _strokeColor(),
           ),
         ),
         Text(
           text,
           style: TextStyle(
-            fontSize: _fontSize,
+            fontSize:
+                _fontSize,
             fontWeight:
                 FontWeight.bold,
             color:
@@ -1182,7 +1194,8 @@ class _TimeOfWarScreenState
               Colors.deepPurpleAccent,
           onChanged: (value) {
             setState(
-              () => _opacity = value,
+              () => _opacity =
+                  value,
             );
             _saveSetting(
               'opacity',
@@ -1201,7 +1214,8 @@ class _TimeOfWarScreenState
               Colors.deepPurpleAccent,
           onChanged: (value) {
             setState(
-              () => _fontSize = value,
+              () => _fontSize =
+                  value,
             );
             _saveSetting(
               'fontSize',
@@ -1216,7 +1230,9 @@ class _TimeOfWarScreenState
           onPressed:
               _pickImage,
           icon:
-              const Icon(Icons.image),
+              const Icon(
+            Icons.image,
+          ),
           label:
               const Text(
             'Вибрати ФОТО',
@@ -1232,11 +1248,14 @@ class _TimeOfWarScreenState
     ValueChanged<bool> onChanged,
   ) {
     return SwitchListTile(
-      title: Text(title),
-      value: value,
+      title:
+          Text(title),
+      value:
+          value,
       activeColor:
           Colors.deepPurpleAccent,
-      onChanged: onChanged,
+      onChanged:
+          onChanged,
     );
   }
 
@@ -1247,7 +1266,8 @@ class _TimeOfWarScreenState
       children: [
         const Text(
           'Колір тексту',
-          style: TextStyle(
+          style:
+              TextStyle(
             fontWeight:
                 FontWeight.bold,
             color:
@@ -1264,9 +1284,18 @@ class _TimeOfWarScreenState
               _tg = g;
               _tb = b;
             });
-            _saveSetting('tr', r);
-            _saveSetting('tg', g);
-            _saveSetting('tb', b);
+            _saveSetting(
+              'tr',
+              r,
+            );
+            _saveSetting(
+              'tg',
+              g,
+            );
+            _saveSetting(
+              'tb',
+              b,
+            );
           },
         ),
         const Divider(
@@ -1275,7 +1304,8 @@ class _TimeOfWarScreenState
         ),
         const Text(
           'Колір фону',
-          style: TextStyle(
+          style:
+              TextStyle(
             fontWeight:
                 FontWeight.bold,
             color:
@@ -1292,9 +1322,18 @@ class _TimeOfWarScreenState
               _bg = g;
               _bb = b;
             });
-            _saveSetting('br', r);
-            _saveSetting('bg', g);
-            _saveSetting('bb', b);
+            _saveSetting(
+              'br',
+              r,
+            );
+            _saveSetting(
+              'bg',
+              g,
+            );
+            _saveSetting(
+              'bb',
+              b,
+            );
           },
         ),
       ],
@@ -1308,7 +1347,8 @@ class _TimeOfWarScreenState
       children: [
         const Text(
           'Колір контуру',
-          style: TextStyle(
+          style:
+              TextStyle(
             fontWeight:
                 FontWeight.bold,
             color:
@@ -1325,9 +1365,18 @@ class _TimeOfWarScreenState
               _sg = g;
               _sb = b;
             });
-            _saveSetting('sr', r);
-            _saveSetting('sg', g);
-            _saveSetting('sb', b);
+            _saveSetting(
+              'sr',
+              r,
+            );
+            _saveSetting(
+              'sg',
+              g,
+            );
+            _saveSetting(
+              'sb',
+              b,
+            );
           },
         ),
         const Divider(
@@ -1338,7 +1387,8 @@ class _TimeOfWarScreenState
           'Товщина контуру',
         ),
         Slider(
-          value: _strokeWidth,
+          value:
+              _strokeWidth,
           min: 0,
           max: 8,
           activeColor:
@@ -1420,16 +1470,22 @@ class _TimeOfWarScreenState
           child: Text(
             label,
             style:
-                TextStyle(color: color),
+                TextStyle(
+              color:
+                  color,
+            ),
           ),
         ),
         Expanded(
           child: Slider(
-            value: value,
+            value:
+                value,
             min: 0,
             max: 255,
-            activeColor: color,
-            onChanged: onChanged,
+            activeColor:
+                color,
+            onChanged:
+                onChanged,
           ),
         ),
       ],
