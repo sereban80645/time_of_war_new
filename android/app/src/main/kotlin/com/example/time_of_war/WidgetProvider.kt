@@ -34,7 +34,6 @@ class WidgetProvider : HomeWidgetProvider() {
                 val imageFile = File(renderedPath)
 
                 if (imageFile.exists() && imageFile.length() > 0) {
-
                     val bitmap = BitmapFactory.decodeFile(
                         imageFile.absolutePath
                     )
@@ -57,14 +56,13 @@ class WidgetProvider : HomeWidgetProvider() {
                     Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
 
-            val pendingIntent =
-                PendingIntent.getActivity(
-                    context,
-                    appWidgetId,
-                    intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or
-                        PendingIntent.FLAG_IMMUTABLE
-                )
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                appWidgetId,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or
+                    PendingIntent.FLAG_IMMUTABLE
+            )
 
             views.setOnClickPendingIntent(
                 R.id.widget_root,
