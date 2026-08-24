@@ -25,20 +25,29 @@ class WidgetProvider : HomeWidgetProvider() {
                 R.layout.widget_layout
             )
 
-            val renderedPath = widgetData.getString(
-                "widget_rendered",
-                null
-            )
+            val renderedPath =
+                widgetData.getString(
+                    "widget_rendered",
+                    null
+                )
 
             if (!renderedPath.isNullOrEmpty()) {
-                val imageFile = File(renderedPath)
 
-                if (imageFile.exists() && imageFile.length() > 0) {
-                    val bitmap = BitmapFactory.decodeFile(
-                        imageFile.absolutePath
-                    )
+                val imageFile =
+                    File(renderedPath)
+
+                if (
+                    imageFile.exists() &&
+                    imageFile.length() > 0
+                ) {
+
+                    val bitmap =
+                        BitmapFactory.decodeFile(
+                            imageFile.absolutePath
+                        )
 
                     if (bitmap != null) {
+
                         views.setImageViewBitmap(
                             R.id.widget_image,
                             bitmap
@@ -56,13 +65,14 @@ class WidgetProvider : HomeWidgetProvider() {
                     Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
 
-            val pendingIntent = PendingIntent.getActivity(
-                context,
-                appWidgetId,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or
-                    PendingIntent.FLAG_IMMUTABLE
-            )
+            val pendingIntent =
+                PendingIntent.getActivity(
+                    context,
+                    appWidgetId,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or
+                        PendingIntent.FLAG_IMMUTABLE
+                )
 
             views.setOnClickPendingIntent(
                 R.id.widget_root,
@@ -76,11 +86,21 @@ class WidgetProvider : HomeWidgetProvider() {
         }
     }
 
-    override fun onEnabled(context: Context) {
+    override fun onEnabled(
+        context: Context
+    ) {
         super.onEnabled(context)
+
+        HourlyWidgetUpdateReceiver
+            .schedule(context)
     }
 
-    override fun onDisabled(context: Context) {
+    override fun onDisabled(
+        context: Context
+    ) {
+        HourlyWidgetUpdateReceiver
+            .cancel(context)
+
         super.onDisabled(context)
     }
 }
