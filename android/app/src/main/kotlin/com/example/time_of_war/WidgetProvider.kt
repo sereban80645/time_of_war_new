@@ -5,7 +5,11 @@ import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetProvider
 import java.io.File
@@ -31,29 +35,211 @@ class WidgetProvider : HomeWidgetProvider() {
                     null
                 )
 
+            val backgroundPath =
+                widgetData.getString(
+                    "imagePath",
+                    null
+                )
+
+            var finalBitmap: Bitmap? = null
+
+            /*
+             * First load the Flutter-rendered widget.
+             */
             if (!renderedPath.isNullOrEmpty()) {
 
-                val imageFile =
+                val renderedFile =
                     File(renderedPath)
 
                 if (
-                    imageFile.exists() &&
-                    imageFile.length() > 0
+                    renderedFile.exists() &&
+                    renderedFile.length() > 0
+                ) {
+                    finalBitmap =
+                        BitmapFactory.decodeFile(
+                            renderedFile.absolutePath
+                        )
+                }
+            }
+
+            /*
+             * Load the user's selected background image.
+             *
+             * HomeWidget.saveImage() stores the image
+             * in the shared HomeWidget storage and
+             * imagePath contains the absolute path.
+             */
+            if (!backgroundPath.isNullOrEmpty()) {
+
+                val backgroundFile =
+                    File(backgroundPath)
+
+                if (
+                    backgroundFile.exists() &&
+                    backgroundFile.length() > 0
                 ) {
 
-                    val bitmap =
+                    val backgroundBitmap =
                         BitmapFactory.decodeFile(
-                            imageFile.absolutePath
+                            backgroundFile.absolutePath
                         )
 
-                    if (bitmap != null) {
+                    if (backgroundBitmap != null) {
 
-                        views.setImageViewBitmap(
-                            R.id.widget_image,
-                            bitmap
-                        )
+                        /*
+                         * If the Flutter-rendered image exists,
+                         * place the selected photo behind it.
+                         *
+                         * If the rendered image is missing,
+                         * use the selected photo directly.
+                         */
+                        if (finalBitmap != null) {
+
+                            val width =
+                                finalBitmap!!.width
+
+                            val height =
+                                finalBitmap!!.height
+
+                            val composedBitmap =
+                                Bitmap.createBitmap(
+                                    width,
+                                    height,
+                                    Bitmap.Config.ARGB_8888
+                                )
+
+                            val canvas =
+                                Canvas(composedBitmap)
+
+                            /*
+                             * Center-crop the selected photo
+                             * so it completely fills the widget.
+                             */
+                            val sourceWidth =
+                                backgroundBitmap.width
+                                    .toFloat()
+
+                            val sourceHeight =
+                                backgroundBitmap.height
+                                    .toFloat()
+
+                            val targetWidth =
+                                width.toFloat()
+
+                            val targetHeight =
+                                height.toFloat()
+
+                            val sourceRatio =
+                                sourceWidth /
+                                    sourceHeight
+
+                            val targetRatio =
+                                targetWidth /
+                                    targetHeight
+
+                            val srcRect: RectF
+
+                            if (
+                                sourceRatio >
+                                    targetRatio
+                            ) {
+                                val cropWidth =
+                                    sourceHeight *
+                                        targetRatio
+
+                                val left =
+                                    (sourceWidth -
+                                        cropWidth) /
+                                        2f
+
+                                srcRect =
+                                    RectF(
+                                        left,
+                                        0f,
+                                        left +
+                                            cropWidth,
+                                        sourceHeight
+                                    )
+                            } else {
+                                val cropHeight =
+                                    sourceWidth /
+                                        targetRatio
+
+                                val top =
+                                    (sourceHeight -
+                                        cropHeight) /
+                                        2f
+
+                                srcRect =
+                                    RectF(
+                                        0f,
+                                        top,
+                                        sourceWidth,
+                                        top +
+                                            cropHeight
+                                    )
+                            }
+
+                            val dstRect =
+                                RectF(
+                                    0f,
+                                    0f,
+                                    targetWidth,
+                                    targetHeight
+                                )
+
+                            val paint =
+                                Paint(
+                                    Paint.ANTI_ALIAS_FLAG
+                                )
+
+                            canvas.drawBitmap(
+                                backgroundBitmap,
+                                srcRect,
+                                dstRect,
+                                paint
+                            )
+
+                            /*
+                             * Put the Flutter-rendered widget
+                             * on top of the photo.
+                             *
+                             * This preserves the timer,
+                             * text color, outline and opacity.
+                             */
+                            canvas.drawBitmap(
+                                finalBitmap,
+                                0f,
+                                0f,
+                                paint
+                            )
+
+                            finalBitmap =
+                                composedBitmap
+
+                        } else {
+
+                            /*
+                             * Fallback:
+                             * if Flutter rendering is unavailable,
+                             * show the selected photo directly.
+                             */
+                            finalBitmap =
+                                backgroundBitmap
+                        }
                     }
                 }
+            }
+
+            /*
+             * Display the final bitmap.
+             */
+            if (finalBitmap != null) {
+
+                views.setImageViewBitmap(
+                    R.id.widget_image,
+                    finalBitmap
+                )
             }
 
             val intent = Intent(
