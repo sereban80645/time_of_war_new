@@ -44,7 +44,7 @@ class WidgetProvider : HomeWidgetProvider() {
             var finalBitmap: Bitmap? = null
 
             /*
-             * First load the Flutter-rendered widget.
+             * Load the Flutter-rendered widget.
              */
             if (!renderedPath.isNullOrEmpty()) {
 
@@ -63,11 +63,7 @@ class WidgetProvider : HomeWidgetProvider() {
             }
 
             /*
-             * Load the user's selected background image.
-             *
-             * HomeWidget.saveImage() stores the image
-             * in the shared HomeWidget storage and
-             * imagePath contains the absolute path.
+             * Load the selected background image.
              */
             if (!backgroundPath.isNullOrEmpty()) {
 
@@ -86,20 +82,16 @@ class WidgetProvider : HomeWidgetProvider() {
 
                     if (backgroundBitmap != null) {
 
-                        /*
-                         * If the Flutter-rendered image exists,
-                         * place the selected photo behind it.
-                         *
-                         * If the rendered image is missing,
-                         * use the selected photo directly.
-                         */
-                        if (finalBitmap != null) {
+                        val renderedBitmap =
+                            finalBitmap
+
+                        if (renderedBitmap != null) {
 
                             val width =
-                                finalBitmap!!.width
+                                renderedBitmap.width
 
                             val height =
-                                finalBitmap!!.height
+                                renderedBitmap.height
 
                             val composedBitmap =
                                 Bitmap.createBitmap(
@@ -111,10 +103,6 @@ class WidgetProvider : HomeWidgetProvider() {
                             val canvas =
                                 Canvas(composedBitmap)
 
-                            /*
-                             * Center-crop the selected photo
-                             * so it completely fills the widget.
-                             */
                             val sourceWidth =
                                 backgroundBitmap.width
                                     .toFloat()
@@ -143,14 +131,16 @@ class WidgetProvider : HomeWidgetProvider() {
                                 sourceRatio >
                                     targetRatio
                             ) {
+
                                 val cropWidth =
                                     sourceHeight *
                                         targetRatio
 
                                 val left =
-                                    (sourceWidth -
-                                        cropWidth) /
-                                        2f
+                                    (
+                                        sourceWidth -
+                                            cropWidth
+                                    ) / 2f
 
                                 srcRect =
                                     RectF(
@@ -160,15 +150,18 @@ class WidgetProvider : HomeWidgetProvider() {
                                             cropWidth,
                                         sourceHeight
                                     )
+
                             } else {
+
                                 val cropHeight =
                                     sourceWidth /
                                         targetRatio
 
                                 val top =
-                                    (sourceHeight -
-                                        cropHeight) /
-                                        2f
+                                    (
+                                        sourceHeight -
+                                            cropHeight
+                                    ) / 2f
 
                                 srcRect =
                                     RectF(
@@ -193,6 +186,9 @@ class WidgetProvider : HomeWidgetProvider() {
                                     Paint.ANTI_ALIAS_FLAG
                                 )
 
+                            /*
+                             * Draw selected photo.
+                             */
                             canvas.drawBitmap(
                                 backgroundBitmap,
                                 srcRect,
@@ -201,14 +197,10 @@ class WidgetProvider : HomeWidgetProvider() {
                             )
 
                             /*
-                             * Put the Flutter-rendered widget
-                             * on top of the photo.
-                             *
-                             * This preserves the timer,
-                             * text color, outline and opacity.
+                             * Draw Flutter widget on top.
                              */
                             canvas.drawBitmap(
-                                finalBitmap,
+                                renderedBitmap,
                                 0f,
                                 0f,
                                 paint
@@ -220,9 +212,8 @@ class WidgetProvider : HomeWidgetProvider() {
                         } else {
 
                             /*
-                             * Fallback:
-                             * if Flutter rendering is unavailable,
-                             * show the selected photo directly.
+                             * If Flutter rendering is unavailable,
+                             * show the selected photo.
                              */
                             finalBitmap =
                                 backgroundBitmap
@@ -232,24 +223,32 @@ class WidgetProvider : HomeWidgetProvider() {
             }
 
             /*
-             * Display the final bitmap.
+             * Put the final bitmap into the widget.
              */
-            if (finalBitmap != null) {
+            val bitmapToDisplay =
+                finalBitmap
+
+            if (bitmapToDisplay != null) {
 
                 views.setImageViewBitmap(
                     R.id.widget_image,
-                    finalBitmap
+                    bitmapToDisplay
                 )
             }
 
-            val intent = Intent(
-                context,
-                MainActivity::class.java
-            ).apply {
-                flags =
-                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP
-            }
+            /*
+             * Open the application when the widget
+             * is tapped.
+             */
+            val intent =
+                Intent(
+                    context,
+                    MainActivity::class.java
+                ).apply {
+                    flags =
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
 
             val pendingIntent =
                 PendingIntent.getActivity(
