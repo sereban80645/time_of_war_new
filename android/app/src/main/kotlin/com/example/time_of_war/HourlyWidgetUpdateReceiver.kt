@@ -61,15 +61,10 @@ class HourlyWidgetUpdateReceiver : BroadcastReceiver() {
             val next = Calendar.getInstance().apply {
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
-
                 add(Calendar.HOUR_OF_DAY, 1)
                 set(Calendar.MINUTE, 1)
             }
 
-            /*
-             * Якщо зараз, наприклад, 14:35,
-             * наступний запуск буде 15:01.
-             */
             alarmManager.setExactAndAllowWhileIdle(
                 AlarmManager.RTC_WAKEUP,
                 next.timeInMillis,
@@ -110,46 +105,48 @@ class HourlyWidgetUpdateReceiver : BroadcastReceiver() {
         intent: Intent
     ) {
 
-        if (intent.action == ACTION_CANCEL) {
-            cancel(context)
-            return
+        when (intent.action) {
+
+            ACTION_CANCEL -> {
+                cancel(context)
+                return
+            }
+
+            ACTION_HOURLY_UPDATE -> {
+
+                val prefs =
+                    context.getSharedPreferences(
+                        "HomeWidgetPreferences",
+                        Context.MODE_PRIVATE
+                    )
+
+                if (!prefs.getBoolean(
+                        "showHour",
+                        true
+                    )
+                ) {
+                    cancel(context)
+                    return
+                }
+
+                val backgroundIntent =
+                    Intent(BACKGROUND_ACTION).apply {
+                        setPackage(
+                            context.packageName
+                        )
+
+                        data =
+                            android.net.Uri.parse(
+                                UPDATE_URI
+                            )
+                    }
+
+                context.sendBroadcast(
+                    backgroundIntent
+                )
+
+                schedule(context)
+            }
         }
-
-        if (intent.action != ACTION_HOURLY_UPDATE) {
-            return
-        }
-
-        val prefs = context.getSharedPreferences(
-            "HomeWidgetPreferences",
-            Context.MODE_PRIVATE
-        )
-
-        /*
-         * Якщо "Показ годин" вимкнений —
-         * НІЯКОГО запуску Flutter.
-         */
-        if (!prefs.getBoolean("showHour", true)) {
-            cancel(context)
-            return
-        }
-
-        /*
-         * Передаємо подію в HomeWidget.
-         * HomeWidgetBackgroundReceiver
-         * запустить Dart callback.
-         */
-        val backgroundIntent = Intent(
-            BACKGROUND_ACTION
-        ).apply {
-            setPackage(context.packageName)
-            data = android.net.Uri.parse(UPDATE_URI)
-        }
-
-        context.sendBroadcast(backgroundIntent)
-
-        /*
-         * Наступне оновлення знову буде xx:01.
-         */
-        schedule(context)
     }
 }
