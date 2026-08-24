@@ -108,9 +108,7 @@ class TimeOfWarWidgetRender extends StatelessWidget {
           horizontal: 40,
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             if (show2022) ...[
               Text(
@@ -178,6 +176,8 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
   Timer? _timer;
   Timer? _debounce;
 
+  bool _widgetUpdateRunning = false;
+
   final DateTime _date2022Start =
       DateTime(2022, 2, 24, 5, 0);
 
@@ -194,7 +194,10 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       const Duration(seconds: 1),
       (_) {
         if (!mounted) return;
+
         setState(() {});
+
+        _scheduleWidgetUpdate();
       },
     );
   }
@@ -207,33 +210,62 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs =
+        await SharedPreferences.getInstance();
 
     if (!mounted) return;
 
     setState(() {
-      _show2022 = prefs.getBool('show2022') ?? true;
-      _show2014 = prefs.getBool('show2014') ?? false;
-      _showHour = prefs.getBool('showHour') ?? true;
-      _showDaysOnly = prefs.getBool('showDaysOnly') ?? false;
+      _show2022 =
+          prefs.getBool('show2022') ?? true;
 
-      _fontSize = prefs.getDouble('fontSize') ?? 22.0;
-      _strokeWidth = prefs.getDouble('strokeWidth') ?? 3.0;
-      _opacity = prefs.getDouble('opacity') ?? 0.5;
+      _show2014 =
+          prefs.getBool('show2014') ?? false;
 
-      _br = prefs.getDouble('br') ?? 30.0;
-      _bg = prefs.getDouble('bg') ?? 30.0;
-      _bb = prefs.getDouble('bb') ?? 30.0;
+      _showHour =
+          prefs.getBool('showHour') ?? true;
 
-      _tr = prefs.getDouble('tr') ?? 255.0;
-      _tg = prefs.getDouble('tg') ?? 255.0;
-      _tb = prefs.getDouble('tb') ?? 255.0;
+      _showDaysOnly =
+          prefs.getBool('showDaysOnly') ?? false;
 
-      _sr = prefs.getDouble('sr') ?? 0.0;
-      _sg = prefs.getDouble('sg') ?? 0.0;
-      _sb = prefs.getDouble('sb') ?? 0.0;
+      _fontSize =
+          prefs.getDouble('fontSize') ?? 22.0;
 
-      _imagePath = prefs.getString('imagePath');
+      _strokeWidth =
+          prefs.getDouble('strokeWidth') ?? 3.0;
+
+      _opacity =
+          prefs.getDouble('opacity') ?? 0.5;
+
+      _br =
+          prefs.getDouble('br') ?? 30.0;
+
+      _bg =
+          prefs.getDouble('bg') ?? 30.0;
+
+      _bb =
+          prefs.getDouble('bb') ?? 30.0;
+
+      _tr =
+          prefs.getDouble('tr') ?? 255.0;
+
+      _tg =
+          prefs.getDouble('tg') ?? 255.0;
+
+      _tb =
+          prefs.getDouble('tb') ?? 255.0;
+
+      _sr =
+          prefs.getDouble('sr') ?? 0.0;
+
+      _sg =
+          prefs.getDouble('sg') ?? 0.0;
+
+      _sb =
+          prefs.getDouble('sb') ?? 0.0;
+
+      _imagePath =
+          prefs.getString('imagePath');
     });
 
     await _updateHomeWidget();
@@ -243,7 +275,8 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
     String key,
     dynamic value,
   ) async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs =
+        await SharedPreferences.getInstance();
 
     if (value is bool) {
       await prefs.setBool(key, value);
@@ -253,14 +286,14 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       await prefs.setString(key, value);
     }
 
-    _debouncedUpdate();
+    _scheduleWidgetUpdate();
   }
 
-  void _debouncedUpdate() {
+  void _scheduleWidgetUpdate() {
     _debounce?.cancel();
 
     _debounce = Timer(
-      const Duration(milliseconds: 500),
+      const Duration(milliseconds: 300),
       _updateHomeWidget,
     );
   }
@@ -293,41 +326,39 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
   }
 
   Future<void> _updateHomeWidget() async {
+    if (_widgetUpdateRunning) return;
+
+    _widgetUpdateRunning = true;
+
     try {
       final time2022 =
-          _calculateTimeDifference(_date2022Start);
+          _calculateTimeDifference(
+        _date2022Start,
+      );
 
       final time2014 =
-          _calculateTimeDifference(_date2014Start);
+          _calculateTimeDifference(
+        _date2014Start,
+      );
 
-      await HomeWidget.saveWidgetData(
+      await HomeWidget.saveWidgetData<String>(
         'text_2022',
         time2022,
       );
 
-      await HomeWidget.saveWidgetData(
+      await HomeWidget.saveWidgetData<String>(
         'text_2014',
         time2014,
       );
 
-      await HomeWidget.saveWidgetData(
+      await HomeWidget.saveWidgetData<bool>(
         'show2022',
         _show2022,
       );
 
-      await HomeWidget.saveWidgetData(
+      await HomeWidget.saveWidgetData<bool>(
         'show2014',
         _show2014,
-      );
-
-      await HomeWidget.saveWidgetData(
-        'showHour',
-        _showHour,
-      );
-
-      await HomeWidget.saveWidgetData(
-        'showDaysOnly',
-        _showDaysOnly,
       );
 
       await HomeWidget.renderFlutterWidget(
@@ -352,25 +383,35 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         androidName: 'WidgetProvider',
       );
     } catch (e) {
-      debugPrint('HomeWidget Error: $e');
+      debugPrint(
+        'HomeWidget Error: $e',
+      );
+    } finally {
+      _widgetUpdateRunning = false;
     }
   }
 
-  String _calculateTimeDifference(DateTime startDate) {
+  String _calculateTimeDifference(
+    DateTime startDate,
+  ) {
     final now = DateTime.now();
 
     if (_showDaysOnly) {
-      final difference = now.difference(startDate);
+      final difference =
+          now.difference(startDate);
 
-      final totalDays = difference.inDays + 1;
+      final totalDays =
+          difference.inDays + 1;
 
-      var hours = now.hour - startDate.hour;
+      var hours =
+          now.hour - startDate.hour;
 
       if (hours < 0) {
         hours += 24;
       }
 
-      var result = '${totalDays}д.';
+      var result =
+          '${totalDays}д.';
 
       if (_showHour) {
         result += ' ${hours}г.';
@@ -379,10 +420,17 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       return result;
     }
 
-    var years = now.year - startDate.year;
-    var months = now.month - startDate.month;
-    var days = now.day - startDate.day;
-    var hours = now.hour - startDate.hour;
+    var years =
+        now.year - startDate.year;
+
+    var months =
+        now.month - startDate.month;
+
+    var days =
+        now.day - startDate.day;
+
+    var hours =
+        now.hour - startDate.hour;
 
     if (hours < 0) {
       days--;
@@ -406,7 +454,11 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
     days++;
 
     final daysInCurrentMonth =
-        DateTime(now.year, now.month + 1, 0).day;
+        DateTime(
+          now.year,
+          now.month + 1,
+          0,
+        ).day;
 
     if (days > daysInCurrentMonth) {
       days -= daysInCurrentMonth;
@@ -419,7 +471,9 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
     }
 
     var result =
-        '${years}р. ${months}міс. ${days}д.';
+        '${years}р. '
+        '${months}міс. '
+        '${days}д.';
 
     if (_showHour) {
       result += ' ${hours}г.';
@@ -428,10 +482,9 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
     return result;
   }
 
-  Widget _buildOutlinedText(String text) {
-    final textColor = _textColor();
-    final strokeColor = _strokeColor();
-
+  Widget _buildOutlinedText(
+    String text,
+  ) {
     return Stack(
       children: [
         Text(
@@ -442,7 +495,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             foreground: Paint()
               ..style = PaintingStyle.stroke
               ..strokeWidth = _strokeWidth
-              ..color = strokeColor,
+              ..color = _strokeColor(),
           ),
         ),
         Text(
@@ -450,7 +503,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
           style: TextStyle(
             fontSize: _fontSize,
             fontWeight: FontWeight.bold,
-            color: textColor,
+            color: _textColor(),
           ),
         ),
       ],
@@ -458,8 +511,6 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
   }
 
   Widget _buildWidgetPreview() {
-    final bgColor = _backgroundColor();
-
     final hasImage =
         _imagePath != null &&
         _imagePath!.isNotEmpty &&
@@ -482,16 +533,21 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             width: 400,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              color: hasImage ? null : bgColor,
-              image: hasImage
-                  ? DecorationImage(
-                      image: FileImage(
-                        File(_imagePath!),
-                      ),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
+              borderRadius:
+                  BorderRadius.circular(28),
+              color:
+                  hasImage
+                      ? null
+                      : _backgroundColor(),
+              image:
+                  hasImage
+                      ? DecorationImage(
+                          image: FileImage(
+                            File(_imagePath!),
+                          ),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
               border: Border.all(
                 color: Colors.white10,
                 width: 1,
@@ -500,15 +556,21 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             child: Container(
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
-                color: hasImage ? bgColor : null,
+                borderRadius:
+                    BorderRadius.circular(28),
+                color:
+                    hasImage
+                        ? _backgroundColor()
+                        : null,
               ),
-              padding: const EdgeInsets.symmetric(
+              padding:
+                  const EdgeInsets.symmetric(
                 vertical: 24,
                 horizontal: 16,
               ),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisSize:
+                    MainAxisSize.min,
                 children: [
                   if (_show2022) ...[
                     const Text(
@@ -517,7 +579,8 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                        fontWeight:
+                            FontWeight.w500,
                       ),
                     ),
                     _buildOutlinedText(
@@ -528,14 +591,17 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
                   ],
                   if (_show2014) ...[
                     if (_show2022)
-                      const SizedBox(height: 10),
+                      const SizedBox(
+                        height: 10,
+                      ),
                     const Text(
                       'Війна з 2014 року:',
                       softWrap: false,
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                        fontWeight:
+                            FontWeight.w500,
                       ),
                     ),
                     _buildOutlinedText(
@@ -553,18 +619,25 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
     );
   }
 
-  Future<String?> _cropImage(String path) async {
-    final cropped = await ImageCropper().cropImage(
+  Future<String?> _cropImage(
+    String path,
+  ) async {
+    final cropped =
+        await ImageCropper().cropImage(
       sourcePath: path,
-      aspectRatio: const CropAspectRatio(
+      aspectRatio:
+          const CropAspectRatio(
         ratioX: 1,
         ratioY: 1,
       ),
       uiSettings: [
         AndroidUiSettings(
-          toolbarTitle: 'Кадрування фону 1:1',
-          toolbarColor: const Color(0xFF212121),
-          toolbarWidgetColor: Colors.white,
+          toolbarTitle:
+              'Кадрування фону 1:1',
+          toolbarColor:
+              const Color(0xFF212121),
+          toolbarWidgetColor:
+              Colors.white,
           initAspectRatio:
               CropAspectRatioPreset.square,
           lockAspectRatio: true,
@@ -577,36 +650,40 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
 
   Future<void> _pickImage() async {
     try {
-      final picker = ImagePicker();
-
-      final pickedFile = await picker.pickImage(
+      final pickedFile =
+          await ImagePicker().pickImage(
         source: ImageSource.gallery,
       );
 
-      if (pickedFile == null) {
-        return;
-      }
+      if (pickedFile == null) return;
 
       final cropped =
-          await _cropImage(pickedFile.path);
+          await _cropImage(
+        pickedFile.path,
+      );
 
       final finalPath =
           cropped ?? pickedFile.path;
 
-      final savedPath = await HomeWidget.saveImage(
+      final savedPath =
+          await HomeWidget.saveImage(
         'widget_background',
-        FileImage(File(finalPath)),
+        FileImage(
+          File(finalPath),
+        ),
       );
 
       if (savedPath.isEmpty) {
         debugPrint(
-          'HomeWidget Error: background image path is empty',
+          'HomeWidget Error: '
+          'background image path is empty',
         );
         return;
       }
 
       final prefs =
-          await SharedPreferences.getInstance();
+          await SharedPreferences
+              .getInstance();
 
       await prefs.setString(
         'imagePath',
@@ -628,14 +705,18 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+    BuildContext context,
+  ) {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Час Війни'),
+          title:
+              const Text('Час Війни'),
           elevation: 0,
-          backgroundColor: Colors.transparent,
+          backgroundColor:
+              Colors.transparent,
           bottom: const TabBar(
             indicatorColor:
                 Colors.deepPurpleAccent,
@@ -647,16 +728,22 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
           ),
         ),
         body: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize:
+              MainAxisSize.min,
           children: [
             _buildWidgetPreview(),
             Expanded(
               child: Container(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF1E1E1E),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(24),
-                    topRight: Radius.circular(24),
+                decoration:
+                    const BoxDecoration(
+                  color:
+                      Color(0xFF1E1E1E),
+                  borderRadius:
+                      BorderRadius.only(
+                    topLeft:
+                        Radius.circular(24),
+                    topRight:
+                        Radius.circular(24),
                   ),
                 ),
                 child: TabBarView(
@@ -676,16 +763,19 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
 
   Widget _buildMainTab() {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding:
+          const EdgeInsets.all(16),
       children: [
         SwitchListTile(
-          title: const Text('Війна 2022'),
+          title:
+              const Text('Війна 2022'),
           value: _show2022,
-          activeColor: Colors.deepPurpleAccent,
+          activeColor:
+              Colors.deepPurpleAccent,
           onChanged: (value) {
-            setState(() {
-              _show2022 = value;
-            });
+            setState(
+              () => _show2022 = value,
+            );
 
             _saveSetting(
               'show2022',
@@ -694,16 +784,15 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
           },
         ),
         SwitchListTile(
-          title: const Text(
-            'Війна 2014',
-            softWrap: false,
-          ),
+          title:
+              const Text('Війна 2014'),
           value: _show2014,
-          activeColor: Colors.deepPurpleAccent,
+          activeColor:
+              Colors.deepPurpleAccent,
           onChanged: (value) {
-            setState(() {
-              _show2014 = value;
-            });
+            setState(
+              () => _show2014 = value,
+            );
 
             _saveSetting(
               'show2014',
@@ -712,13 +801,15 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
           },
         ),
         SwitchListTile(
-          title: const Text('Показ годин'),
+          title:
+              const Text('Показ годин'),
           value: _showHour,
-          activeColor: Colors.deepPurpleAccent,
+          activeColor:
+              Colors.deepPurpleAccent,
           onChanged: (value) {
-            setState(() {
-              _showHour = value;
-            });
+            setState(
+              () => _showHour = value,
+            );
 
             _saveSetting(
               'showHour',
@@ -727,13 +818,15 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
           },
         ),
         SwitchListTile(
-          title: const Text('Облік в днях'),
+          title:
+              const Text('Облік в днях'),
           value: _showDaysOnly,
-          activeColor: Colors.deepPurpleAccent,
+          activeColor:
+              Colors.deepPurpleAccent,
           onChanged: (value) {
-            setState(() {
-              _showDaysOnly = value;
-            });
+            setState(
+              () => _showDaysOnly = value,
+            );
 
             _saveSetting(
               'showDaysOnly',
@@ -746,19 +839,17 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         ),
         const Text(
           'Прозорість фону',
-          style: TextStyle(
-            fontSize: 14,
-          ),
         ),
         Slider(
           value: _opacity,
           min: 0,
           max: 1,
-          activeColor: Colors.deepPurpleAccent,
+          activeColor:
+              Colors.deepPurpleAccent,
           onChanged: (value) {
-            setState(() {
-              _opacity = value;
-            });
+            setState(
+              () => _opacity = value,
+            );
 
             _saveSetting(
               'opacity',
@@ -768,19 +859,17 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         ),
         const Text(
           'Розмір тексту',
-          style: TextStyle(
-            fontSize: 14,
-          ),
         ),
         Slider(
           value: _fontSize,
           min: 12,
           max: 40,
-          activeColor: Colors.deepPurpleAccent,
+          activeColor:
+              Colors.deepPurpleAccent,
           onChanged: (value) {
-            setState(() {
-              _fontSize = value;
-            });
+            setState(
+              () => _fontSize = value,
+            );
 
             _saveSetting(
               'fontSize',
@@ -788,14 +877,21 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
             );
           },
         ),
-        const SizedBox(height: 10),
+        const SizedBox(
+          height: 10,
+        ),
         ElevatedButton.icon(
           onPressed: _pickImage,
-          icon: const Icon(Icons.image),
-          label: const Text('Вибрати ФОТО'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF2D2D2D),
-            padding: const EdgeInsets.symmetric(
+          icon:
+              const Icon(Icons.image),
+          label:
+              const Text('Вибрати ФОТО'),
+          style:
+              ElevatedButton.styleFrom(
+            backgroundColor:
+                const Color(0xFF2D2D2D),
+            padding:
+                const EdgeInsets.symmetric(
               vertical: 14,
             ),
           ),
@@ -806,13 +902,16 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
 
   Widget _buildColorsTab() {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding:
+          const EdgeInsets.all(16),
       children: [
         const Text(
           'Колір тексту',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.deepPurpleAccent,
+            fontWeight:
+                FontWeight.bold,
+            color:
+                Colors.deepPurpleAccent,
           ),
         ),
         const SizedBox(height: 8),
@@ -839,8 +938,10 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         const Text(
           'Колір фону',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.deepPurpleAccent,
+            fontWeight:
+                FontWeight.bold,
+            color:
+                Colors.deepPurpleAccent,
           ),
         ),
         const SizedBox(height: 8),
@@ -866,13 +967,16 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
 
   Widget _buildContourTab() {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding:
+          const EdgeInsets.all(16),
       children: [
         const Text(
           'Колір контуру',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.deepPurpleAccent,
+            fontWeight:
+                FontWeight.bold,
+            color:
+                Colors.deepPurpleAccent,
           ),
         ),
         const SizedBox(height: 8),
@@ -898,19 +1002,17 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         ),
         const Text(
           'Товщина контуру',
-          style: TextStyle(
-            fontSize: 14,
-          ),
         ),
         Slider(
           value: _strokeWidth,
           min: 0,
           max: 8,
-          activeColor: Colors.deepPurpleAccent,
+          activeColor:
+              Colors.deepPurpleAccent,
           onChanged: (value) {
-            setState(() {
-              _strokeWidth = value;
-            });
+            setState(
+              () => _strokeWidth = value,
+            );
 
             _saveSetting(
               'strokeWidth',
@@ -950,7 +1052,8 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
                 value: r,
                 min: 0,
                 max: 255,
-                activeColor: Colors.red,
+                activeColor:
+                    Colors.red,
                 onChanged: (value) {
                   onChanged(
                     value,
@@ -978,7 +1081,8 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
                 value: g,
                 min: 0,
                 max: 255,
-                activeColor: Colors.green,
+                activeColor:
+                    Colors.green,
                 onChanged: (value) {
                   onChanged(
                     r,
@@ -1006,7 +1110,8 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
                 value: b,
                 min: 0,
                 max: 255,
-                activeColor: Colors.blue,
+                activeColor:
+                    Colors.blue,
                 onChanged: (value) {
                   onChanged(
                     r,
@@ -1025,5 +1130,8 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+
+  runApp(
+    const MyApp(),
+  );
 }
