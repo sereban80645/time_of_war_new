@@ -43,9 +43,6 @@ class WidgetProvider : HomeWidgetProvider() {
 
             var finalBitmap: Bitmap? = null
 
-            /*
-             * Load the Flutter-rendered widget.
-             */
             if (!renderedPath.isNullOrEmpty()) {
 
                 val renderedFile =
@@ -62,9 +59,6 @@ class WidgetProvider : HomeWidgetProvider() {
                 }
             }
 
-            /*
-             * Load the selected background image.
-             */
             if (!backgroundPath.isNullOrEmpty()) {
 
                 val backgroundFile =
@@ -82,7 +76,7 @@ class WidgetProvider : HomeWidgetProvider() {
 
                     if (backgroundBitmap != null) {
 
-                        val renderedBitmap =
+                        val renderedBitmap: Bitmap? =
                             finalBitmap
 
                         if (renderedBitmap != null) {
@@ -186,9 +180,6 @@ class WidgetProvider : HomeWidgetProvider() {
                                     Paint.ANTI_ALIAS_FLAG
                                 )
 
-                            /*
-                             * Draw selected photo.
-                             */
                             canvas.drawBitmap(
                                 backgroundBitmap,
                                 srcRect,
@@ -197,10 +188,11 @@ class WidgetProvider : HomeWidgetProvider() {
                             )
 
                             /*
-                             * Draw Flutter widget on top.
+                             * renderedBitmap was checked
+                             * above, so !! is safe here.
                              */
                             canvas.drawBitmap(
-                                renderedBitmap,
+                                renderedBitmap!!,
                                 0f,
                                 0f,
                                 paint
@@ -211,10 +203,6 @@ class WidgetProvider : HomeWidgetProvider() {
 
                         } else {
 
-                            /*
-                             * If Flutter rendering is unavailable,
-                             * show the selected photo.
-                             */
                             finalBitmap =
                                 backgroundBitmap
                         }
@@ -222,9 +210,6 @@ class WidgetProvider : HomeWidgetProvider() {
                 }
             }
 
-            /*
-             * Put the final bitmap into the widget.
-             */
             val bitmapToDisplay =
                 finalBitmap
 
@@ -236,10 +221,6 @@ class WidgetProvider : HomeWidgetProvider() {
                 )
             }
 
-            /*
-             * Open the application when the widget
-             * is tapped.
-             */
             val intent =
                 Intent(
                     context,
@@ -276,16 +257,15 @@ class WidgetProvider : HomeWidgetProvider() {
     ) {
         super.onEnabled(context)
 
-        HourlyWidgetUpdateReceiver
-            .schedule(context)
+        /*
+         * The hourly timer is now handled by
+         * android_alarm_manager_plus from Flutter.
+         */
     }
 
     override fun onDisabled(
         context: Context
     ) {
-        HourlyWidgetUpdateReceiver
-            .cancel(context)
-
         super.onDisabled(context)
     }
 }
