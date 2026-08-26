@@ -9,6 +9,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetProvider
@@ -76,7 +77,7 @@ class WidgetProvider : HomeWidgetProvider() {
 
                     if (backgroundBitmap != null) {
 
-                        val renderedBitmap: Bitmap? =
+                        val renderedBitmap =
                             finalBitmap
 
                         if (renderedBitmap != null) {
@@ -98,12 +99,10 @@ class WidgetProvider : HomeWidgetProvider() {
                                 Canvas(composedBitmap)
 
                             val sourceWidth =
-                                backgroundBitmap.width
-                                    .toFloat()
+                                backgroundBitmap.width.toFloat()
 
                             val sourceHeight =
-                                backgroundBitmap.height
-                                    .toFloat()
+                                backgroundBitmap.height.toFloat()
 
                             val targetWidth =
                                 width.toFloat()
@@ -119,7 +118,7 @@ class WidgetProvider : HomeWidgetProvider() {
                                 targetWidth /
                                     targetHeight
 
-                            val srcRect: RectF
+                            val srcRect: Rect
 
                             if (
                                 sourceRatio >
@@ -137,12 +136,14 @@ class WidgetProvider : HomeWidgetProvider() {
                                     ) / 2f
 
                                 srcRect =
-                                    RectF(
-                                        left,
-                                        0f,
-                                        left +
-                                            cropWidth,
-                                        sourceHeight
+                                    Rect(
+                                        left.toInt(),
+                                        0,
+                                        (
+                                            left +
+                                                cropWidth
+                                            ).toInt(),
+                                        sourceHeight.toInt()
                                     )
 
                             } else {
@@ -158,12 +159,14 @@ class WidgetProvider : HomeWidgetProvider() {
                                     ) / 2f
 
                                 srcRect =
-                                    RectF(
-                                        0f,
-                                        top,
-                                        sourceWidth,
-                                        top +
-                                            cropHeight
+                                    Rect(
+                                        0,
+                                        top.toInt(),
+                                        sourceWidth.toInt(),
+                                        (
+                                            top +
+                                                cropHeight
+                                            ).toInt()
                                     )
                             }
 
@@ -180,6 +183,10 @@ class WidgetProvider : HomeWidgetProvider() {
                                     Paint.ANTI_ALIAS_FLAG
                                 )
 
+                            /*
+                             * Draw selected photo
+                             * as the widget background.
+                             */
                             canvas.drawBitmap(
                                 backgroundBitmap,
                                 srcRect,
@@ -188,11 +195,11 @@ class WidgetProvider : HomeWidgetProvider() {
                             )
 
                             /*
-                             * renderedBitmap was checked
-                             * above, so !! is safe here.
+                             * Draw Flutter widget
+                             * on top of the photo.
                              */
                             canvas.drawBitmap(
-                                renderedBitmap!!,
+                                renderedBitmap,
                                 0f,
                                 0f,
                                 paint
@@ -203,6 +210,11 @@ class WidgetProvider : HomeWidgetProvider() {
 
                         } else {
 
+                            /*
+                             * If the rendered widget
+                             * is unavailable, show
+                             * the selected photo.
+                             */
                             finalBitmap =
                                 backgroundBitmap
                         }
@@ -258,8 +270,8 @@ class WidgetProvider : HomeWidgetProvider() {
         super.onEnabled(context)
 
         /*
-         * The hourly timer is now handled by
-         * android_alarm_manager_plus from Flutter.
+         * Hourly updates are handled by
+         * android_alarm_manager_plus.
          */
     }
 
