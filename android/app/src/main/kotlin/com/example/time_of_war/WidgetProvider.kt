@@ -30,46 +30,38 @@ class WidgetProvider : HomeWidgetProvider() {
                 R.layout.widget_layout
             )
 
-            val renderedPath =
-                widgetData.getString(
-                    "widget_rendered",
-                    null
-                )
+            val renderedPath = widgetData.getString(
+                "widget_rendered",
+                null
+            )
 
-            val backgroundPath =
-                widgetData.getString(
-                    "imagePath",
-                    null
-                )
+            val backgroundPath = widgetData.getString(
+                "imagePath",
+                null
+            )
 
             var finalBitmap: Bitmap? = null
 
             if (!renderedPath.isNullOrEmpty()) {
-
-                val renderedFile =
-                    File(renderedPath)
+                val renderedFile = File(renderedPath)
 
                 if (
                     renderedFile.exists() &&
                     renderedFile.length() > 0
                 ) {
-                    finalBitmap =
-                        BitmapFactory.decodeFile(
-                            renderedFile.absolutePath
-                        )
+                    finalBitmap = BitmapFactory.decodeFile(
+                        renderedFile.absolutePath
+                    )
                 }
             }
 
             if (!backgroundPath.isNullOrEmpty()) {
-
-                val backgroundFile =
-                    File(backgroundPath)
+                val backgroundFile = File(backgroundPath)
 
                 if (
                     backgroundFile.exists() &&
                     backgroundFile.length() > 0
                 ) {
-
                     val backgroundBitmap =
                         BitmapFactory.decodeFile(
                             backgroundFile.absolutePath
@@ -77,16 +69,12 @@ class WidgetProvider : HomeWidgetProvider() {
 
                     if (backgroundBitmap != null) {
 
-                        val renderedBitmap =
-                            finalBitmap
+                        val renderedBitmap = finalBitmap
 
                         if (renderedBitmap != null) {
 
-                            val width =
-                                renderedBitmap.width
-
-                            val height =
-                                renderedBitmap.height
+                            val width = renderedBitmap.width
+                            val height = renderedBitmap.height
 
                             val composedBitmap =
                                 Bitmap.createBitmap(
@@ -111,63 +99,42 @@ class WidgetProvider : HomeWidgetProvider() {
                                 height.toFloat()
 
                             val sourceRatio =
-                                sourceWidth /
-                                    sourceHeight
+                                sourceWidth / sourceHeight
 
                             val targetRatio =
-                                targetWidth /
-                                    targetHeight
+                                targetWidth / targetHeight
 
                             val srcRect: Rect
 
-                            if (
-                                sourceRatio >
-                                    targetRatio
-                            ) {
+                            if (sourceRatio > targetRatio) {
 
                                 val cropWidth =
-                                    sourceHeight *
-                                        targetRatio
+                                    sourceHeight * targetRatio
 
                                 val left =
-                                    (
-                                        sourceWidth -
-                                            cropWidth
-                                    ) / 2f
+                                    (sourceWidth - cropWidth) / 2f
 
-                                srcRect =
-                                    Rect(
-                                        left.toInt(),
-                                        0,
-                                        (
-                                            left +
-                                                cropWidth
-                                            ).toInt(),
-                                        sourceHeight.toInt()
-                                    )
+                                srcRect = Rect(
+                                    left.toInt(),
+                                    0,
+                                    (left + cropWidth).toInt(),
+                                    sourceHeight.toInt()
+                                )
 
                             } else {
 
                                 val cropHeight =
-                                    sourceWidth /
-                                        targetRatio
+                                    sourceWidth / targetRatio
 
                                 val top =
-                                    (
-                                        sourceHeight -
-                                            cropHeight
-                                    ) / 2f
+                                    (sourceHeight - cropHeight) / 2f
 
-                                srcRect =
-                                    Rect(
-                                        0,
-                                        top.toInt(),
-                                        sourceWidth.toInt(),
-                                        (
-                                            top +
-                                                cropHeight
-                                            ).toInt()
-                                    )
+                                srcRect = Rect(
+                                    0,
+                                    top.toInt(),
+                                    sourceWidth.toInt(),
+                                    (top + cropHeight).toInt()
+                                )
                             }
 
                             val dstRect =
@@ -183,10 +150,6 @@ class WidgetProvider : HomeWidgetProvider() {
                                     Paint.ANTI_ALIAS_FLAG
                                 )
 
-                            /*
-                             * Draw selected photo
-                             * as the widget background.
-                             */
                             canvas.drawBitmap(
                                 backgroundBitmap,
                                 srcRect,
@@ -194,10 +157,6 @@ class WidgetProvider : HomeWidgetProvider() {
                                 paint
                             )
 
-                            /*
-                             * Draw Flutter widget
-                             * on top of the photo.
-                             */
                             canvas.drawBitmap(
                                 renderedBitmap,
                                 0f,
@@ -210,11 +169,6 @@ class WidgetProvider : HomeWidgetProvider() {
 
                         } else {
 
-                            /*
-                             * If the rendered widget
-                             * is unavailable, show
-                             * the selected photo.
-                             */
                             finalBitmap =
                                 backgroundBitmap
                         }
@@ -222,14 +176,11 @@ class WidgetProvider : HomeWidgetProvider() {
                 }
             }
 
-            val bitmapToDisplay =
-                finalBitmap
-
-            if (bitmapToDisplay != null) {
+            if (finalBitmap != null) {
 
                 views.setImageViewBitmap(
                     R.id.widget_image,
-                    bitmapToDisplay
+                    finalBitmap
                 )
             }
 
@@ -240,7 +191,7 @@ class WidgetProvider : HomeWidgetProvider() {
                 ).apply {
                     flags =
                         Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_CLEAR_TOP
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
 
             val pendingIntent =
@@ -262,6 +213,12 @@ class WidgetProvider : HomeWidgetProvider() {
                 views
             )
         }
+
+        /*
+         * Запускаємо/перезапускаємо точний
+         * погодинний AlarmManager.
+         */
+        HourlyWidgetUpdateReceiver.schedule(context)
     }
 
     override fun onEnabled(
@@ -269,15 +226,18 @@ class WidgetProvider : HomeWidgetProvider() {
     ) {
         super.onEnabled(context)
 
-        /*
-         * Hourly updates are handled by
-         * android_alarm_manager_plus.
-         */
+        HourlyWidgetUpdateReceiver.schedule(
+            context
+        )
     }
 
     override fun onDisabled(
         context: Context
     ) {
+        HourlyWidgetUpdateReceiver.cancel(
+            context
+        )
+
         super.onDisabled(context)
     }
 }
