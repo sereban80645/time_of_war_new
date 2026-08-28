@@ -6,12 +6,15 @@ import 'package:home_widget/home_widget.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 
 final DateTime date2022Start =
     DateTime(2022, 2, 24, 5, 0);
 
 final DateTime date2014Start =
     DateTime(2014, 2, 20, 12, 0);
+
+const int hourlyAlarmId = 2022;
 
 String calculateTimeDifference(
   DateTime startDate,
@@ -432,6 +435,67 @@ Future<void> backgroundCallback(
   }
 }
 
+@pragma('vm:entry-point')
+Future<void> alarmCallback() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await backgroundCallback(null);
+  } catch (e) {
+    debugPrint(
+      'Alarm callback error: $e',
+    );
+  }
+
+  await _scheduleNextHourlyAlarm();
+}
+
+Future<void> _scheduleNextHourlyAlarm() async {
+  try {
+    final now = DateTime.now();
+
+    DateTime nextAlarm = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      1,
+    );
+
+    if (!nextAlarm.isAfter(now)) {
+      nextAlarm = DateTime(
+        now.year,
+        now.month,
+        now.day,
+        now.hour + 1,
+        1,
+      );
+    }
+
+    await AndroidAlarmManager.cancel(
+      hourlyAlarmId,
+    );
+
+    await AndroidAlarmManager.oneShotAt(
+      nextAlarm,
+      hourlyAlarmId,
+      alarmCallback,
+      exact: true,
+      wakeup: true,
+      allowWhileIdle: true,
+      rescheduleOnReboot: true,
+    );
+
+    debugPrint(
+      'Next widget alarm scheduled: $nextAlarm',
+    );
+  } catch (e) {
+    debugPrint(
+      'Alarm scheduling error: $e',
+    );
+  }
+}
+
 class TimeOfWarScreen
     extends StatefulWidget {
   const TimeOfWarScreen({super.key});
@@ -576,6 +640,7 @@ class _TimeOfWarScreenState
     });
 
     await _updateHomeWidget();
+    await _scheduleNextHourlyAlarm();
   }
 
   Future<void> _saveSetting(
@@ -734,21 +799,18 @@ class _TimeOfWarScreenState
 
       if (_imagePath != null &&
           _imagePath!.isNotEmpty) {
-        await HomeWidget
-            .saveWidgetData<String>(
+        await HomeWidget.saveWidgetData<String>(
           'imagePath',
           _imagePath!,
         );
       } else {
-        await HomeWidget
-            .saveWidgetData<String?>(
+        await HomeWidget.saveWidgetData<String?>(
           'imagePath',
           null,
         );
       }
 
-      await HomeWidget
-          .renderFlutterWidget(
+      await HomeWidget.renderFlutterWidget(
         TimeOfWarWidgetRender(
           show2022: _show2022,
           show2014: _show2014,
@@ -1496,10 +1558,13 @@ class _TimeOfWarScreenState
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await HomeWidget
-      .registerBackgroundCallback(
+  await AndroidAlarmManager.initialize();
+
+  await HomeWidget.registerBackgroundCallback(
     backgroundCallback,
   );
+
+  await _scheduleNextHourlyAlarm();
 
   runApp(
     const MyApp(),
