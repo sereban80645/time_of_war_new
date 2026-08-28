@@ -3,8 +3,24 @@
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!--
+         Дозвіл на точні alarm.
+         На Android 12+ користувач повинен
+         дозволити його через:
+         Налаштування →
+         Програми →
+         Спеціальний доступ →
+         Будильники та нагадування.
+    -->
     <uses-permission
         android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!--
+         Дозвіл на запуск receiver після
+         перезавантаження телефона.
+    -->
+    <uses-permission
+        android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:label="time_of_war"
@@ -25,22 +41,29 @@
                 android:resource="@style/NormalTheme" />
 
             <intent-filter>
+
                 <action
                     android:name="android.intent.action.MAIN" />
 
                 <category
                     android:name="android.intent.category.LAUNCHER" />
+
             </intent-filter>
 
         </activity>
 
+        <!--
+             Основний HomeScreen Widget.
+        -->
         <receiver
             android:name=".WidgetProvider"
             android:exported="true">
 
             <intent-filter>
+
                 <action
                     android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+
             </intent-filter>
 
             <meta-data
@@ -49,17 +72,51 @@
 
         </receiver>
 
+        <!--
+             Наш автономний погодинний/добовий timer.
+        -->
         <receiver
             android:name=".HourlyWidgetUpdateReceiver"
-            android:exported="false" />
+            android:exported="true">
 
+            <intent-filter>
+
+                <!-- Після перезавантаження телефона -->
+                <action
+                    android:name="android.intent.action.BOOT_COMPLETED" />
+
+                <!-- Після оновлення APK -->
+                <action
+                    android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+
+                <!-- Після надання доступу до точних alarm -->
+                <action
+                    android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+
+                <!-- Наш власний alarm -->
+                <action
+                    android:name="com.example.time_of_war.HOURLY_WIDGET_UPDATE" />
+
+                <!-- Скасування alarm -->
+                <action
+                    android:name="com.example.time_of_war.CANCEL_HOURLY_UPDATE" />
+
+            </intent-filter>
+
+        </receiver>
+
+        <!--
+             HomeWidget background callback.
+        -->
         <receiver
             android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver"
             android:exported="true">
 
             <intent-filter>
+
                 <action
                     android:name="es.antonborri.home_widget.action.BACKGROUND" />
+
             </intent-filter>
 
         </receiver>
