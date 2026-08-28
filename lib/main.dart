@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 
 final DateTime date2022Start =
     DateTime(2022, 2, 24, 5, 0);
@@ -14,7 +14,7 @@ final DateTime date2022Start =
 final DateTime date2014Start =
     DateTime(2014, 2, 20, 12, 0);
 
-const int hourlyAlarmId = 2022;
+const int widgetAlarmId = 20222014;
 
 String calculateTimeDifference(
   DateTime startDate,
@@ -257,6 +257,17 @@ Future<void> backgroundCallback(
 ) async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await _updateWidgetInBackground();
+}
+
+@pragma('vm:entry-point')
+Future<void> alarmCallback() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await _updateWidgetInBackground();
+}
+
+Future<void> _updateWidgetInBackground() async {
   try {
     final show2022 =
         await HomeWidget.getWidgetData<bool>(
@@ -435,59 +446,33 @@ Future<void> backgroundCallback(
   }
 }
 
-@pragma('vm:entry-point')
-Future<void> alarmCallback() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  try {
-    await backgroundCallback(null);
-  } catch (e) {
-    debugPrint(
-      'Alarm callback error: $e',
-    );
-  }
-
-  await _scheduleNextHourlyAlarm();
-}
-
 Future<void> _scheduleNextHourlyAlarm() async {
   try {
     final now = DateTime.now();
 
-    DateTime nextAlarm = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      now.hour,
-      1,
-    );
+    DateTime next =
+        DateTime(
+          now.year,
+          now.month,
+          now.day,
+          now.hour,
+          1,
+        );
 
-    if (!nextAlarm.isAfter(now)) {
-      nextAlarm = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        now.hour + 1,
-        1,
+    if (!next.isAfter(now)) {
+      next = next.add(
+        const Duration(hours: 1),
       );
     }
 
-    await AndroidAlarmManager.cancel(
-      hourlyAlarmId,
-    );
-
     await AndroidAlarmManager.oneShotAt(
-      nextAlarm,
-      hourlyAlarmId,
+      next,
+      widgetAlarmId,
       alarmCallback,
       exact: true,
       wakeup: true,
       allowWhileIdle: true,
       rescheduleOnReboot: true,
-    );
-
-    debugPrint(
-      'Next widget alarm scheduled: $nextAlarm',
     );
   } catch (e) {
     debugPrint(
@@ -640,7 +625,6 @@ class _TimeOfWarScreenState
     });
 
     await _updateHomeWidget();
-    await _scheduleNextHourlyAlarm();
   }
 
   Future<void> _saveSetting(
@@ -797,18 +781,10 @@ class _TimeOfWarScreenState
         _sb,
       );
 
-      if (_imagePath != null &&
-          _imagePath!.isNotEmpty) {
-        await HomeWidget.saveWidgetData<String>(
-          'imagePath',
-          _imagePath!,
-        );
-      } else {
-        await HomeWidget.saveWidgetData<String?>(
-          'imagePath',
-          null,
-        );
-      }
+      await HomeWidget.saveWidgetData<String?>(
+        'imagePath',
+        _imagePath,
+      );
 
       await HomeWidget.renderFlutterWidget(
         TimeOfWarWidgetRender(
@@ -943,6 +919,11 @@ class _TimeOfWarScreenState
               .getInstance();
 
       await prefs.setString(
+        'imagePath',
+        savedPath,
+      );
+
+      await HomeWidget.saveWidgetData<String>(
         'imagePath',
         savedPath,
       );
@@ -1558,32 +1539,13 @@ class _TimeOfWarScreenState
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  /*
-   * ОБОВ'ЯЗКОВА ІНІЦІАЛІЗАЦІЯ
-   * android_alarm_manager_plus.
-   *
-   * Без неї alarm, який ми ставимо
-   * через AndroidAlarmManager.oneShotAt(),
-   * не може нормально працювати.
-   */
-  final alarmInitialized =
-      await AndroidAlarmManager.initialize();
-
-  debugPrint(
-    'AndroidAlarmManager initialized: $alarmInitialized',
-  );
-
-  await HomeWidget.registerBackgroundCallback(
+  await HomeWidget
+      .registerBackgroundCallback(
     backgroundCallback,
   );
 
-  /*
-   * Встановлюємо перший alarm одразу
-   * після запуску застосунку.
-   *
-   * Наступні alarm встановлюються
-   * після кожного спрацювання.
-   */
+  await AndroidAlarmManager.initialize();
+
   await _scheduleNextHourlyAlarm();
 
   runApp(
