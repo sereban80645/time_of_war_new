@@ -1558,12 +1558,32 @@ class _TimeOfWarScreenState
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await AndroidAlarmManager.initialize();
+  /*
+   * ОБОВ'ЯЗКОВА ІНІЦІАЛІЗАЦІЯ
+   * android_alarm_manager_plus.
+   *
+   * Без неї alarm, який ми ставимо
+   * через AndroidAlarmManager.oneShotAt(),
+   * не може нормально працювати.
+   */
+  final alarmInitialized =
+      await AndroidAlarmManager.initialize();
+
+  debugPrint(
+    'AndroidAlarmManager initialized: $alarmInitialized',
+  );
 
   await HomeWidget.registerBackgroundCallback(
     backgroundCallback,
   );
 
+  /*
+   * Встановлюємо перший alarm одразу
+   * після запуску застосунку.
+   *
+   * Наступні alarm встановлюються
+   * після кожного спрацювання.
+   */
   await _scheduleNextHourlyAlarm();
 
   runApp(
