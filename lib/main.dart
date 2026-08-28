@@ -178,7 +178,8 @@ class TimeOfWarWidgetRender extends StatelessWidget {
         height: 400,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: hasImage ? null : bgColor,
+          color:
+              hasImage ? null : bgColor,
           image: hasImage
               ? DecorationImage(
                   image: FileImage(
@@ -261,8 +262,12 @@ Future<void> backgroundCallback(
 Future<void> alarmCallback() async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
-  await _updateWidgetInBackground();
-  await _scheduleNextHourlyAlarm();
+
+  try {
+    await _updateWidgetInBackground();
+  } finally {
+    await _scheduleNextHourlyAlarm();
+  }
 }
 
 Future<void> _updateWidgetInBackground() async {
@@ -533,7 +538,9 @@ class _TimeOfWarScreenState
       const Duration(minutes: 1),
       (_) {
         if (!mounted) return;
+
         setState(() {});
+
         _scheduleWidgetUpdate();
       },
     );
@@ -557,51 +564,67 @@ class _TimeOfWarScreenState
       _show2022 =
           prefs.getBool('show2022') ??
               true;
+
       _show2014 =
           prefs.getBool('show2014') ??
               false;
+
       _showHour =
           prefs.getBool('showHour') ??
               true;
+
       _showDaysOnly =
           prefs.getBool('showDaysOnly') ??
               false;
+
       _fontSize =
           prefs.getDouble('fontSize') ??
               22.0;
+
       _strokeWidth =
           prefs.getDouble('strokeWidth') ??
               3.0;
+
       _opacity =
           prefs.getDouble('opacity') ??
               0.5;
+
       _br =
           prefs.getDouble('br') ??
               30.0;
+
       _bg =
           prefs.getDouble('bg') ??
               30.0;
+
       _bb =
           prefs.getDouble('bb') ??
               30.0;
+
       _tr =
           prefs.getDouble('tr') ??
               255.0;
+
       _tg =
           prefs.getDouble('tg') ??
               255.0;
+
       _tb =
           prefs.getDouble('tb') ??
               255.0;
+
       _sr =
           prefs.getDouble('sr') ??
               0.0;
+
       _sg =
           prefs.getDouble('sg') ??
               0.0;
+
       _sb =
           prefs.getDouble('sb') ??
               0.0;
+
       _imagePath =
           prefs.getString('imagePath');
     });
@@ -618,11 +641,20 @@ class _TimeOfWarScreenState
             .getInstance();
 
     if (value is bool) {
-      await prefs.setBool(key, value);
+      await prefs.setBool(
+        key,
+        value,
+      );
     } else if (value is double) {
-      await prefs.setDouble(key, value);
+      await prefs.setDouble(
+        key,
+        value,
+      );
     } else if (value is String) {
-      await prefs.setString(key, value);
+      await prefs.setString(
+        key,
+        value,
+      );
     }
 
     _scheduleWidgetUpdate();
@@ -775,7 +807,8 @@ class _TimeOfWarScreenState
               _textColor(),
           strokeColor:
               _strokeColor(),
-          imagePath: _imagePath,
+          imagePath:
+              _imagePath,
         ),
         key: 'widget_rendered',
         logicalSize:
@@ -1300,9 +1333,18 @@ class _TimeOfWarScreenState
               _tg = g;
               _tb = b;
             });
-            _saveSetting('tr', r);
-            _saveSetting('tg', g);
-            _saveSetting('tb', b);
+            _saveSetting(
+              'tr',
+              r,
+            );
+            _saveSetting(
+              'tg',
+              g,
+            );
+            _saveSetting(
+              'tb',
+              b,
+            );
           },
         ),
         const Divider(
@@ -1329,9 +1371,18 @@ class _TimeOfWarScreenState
               _bg = g;
               _bb = b;
             });
-            _saveSetting('br', r);
-            _saveSetting('bg', g);
-            _saveSetting('bb', b);
+            _saveSetting(
+              'br',
+              r,
+            );
+            _saveSetting(
+              'bg',
+              g,
+            );
+            _saveSetting(
+              'bb',
+              b,
+            );
           },
         ),
       ],
@@ -1363,9 +1414,18 @@ class _TimeOfWarScreenState
               _sg = g;
               _sb = b;
             });
-            _saveSetting('sr', r);
-            _saveSetting('sg', g);
-            _saveSetting('sb', b);
+            _saveSetting(
+              'sr',
+              r,
+            );
+            _saveSetting(
+              'sg',
+              g,
+            );
+            _saveSetting(
+              'sb',
+              b,
+            );
           },
         ),
         const Divider(
