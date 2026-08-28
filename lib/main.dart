@@ -265,6 +265,8 @@ Future<void> alarmCallback() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await _updateWidgetInBackground();
+
+  await _scheduleNextHourlyAlarm();
 }
 
 Future<void> _updateWidgetInBackground() async {
