@@ -7,10 +7,6 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Rect
-import android.graphics.RectF
 import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetProvider
 import java.io.File
@@ -30,152 +26,46 @@ class WidgetProvider : HomeWidgetProvider() {
                 R.layout.widget_layout
             )
 
+            /*
+             * Flutter вже генерує ГОТОВИЙ PNG:
+             *
+             * - фон
+             * - фотографія
+             * - прозорість
+             * - два лічильники
+             * - текст
+             * - контур
+             *
+             * Тому тут більше НЕ складаємо
+             * backgroundBitmap + renderedBitmap.
+             */
+
             val renderedPath = widgetData.getString(
                 "widget_rendered",
-                null
-            )
-
-            val backgroundPath = widgetData.getString(
-                "imagePath",
                 null
             )
 
             var finalBitmap: Bitmap? = null
 
             if (!renderedPath.isNullOrEmpty()) {
+
                 val renderedFile = File(renderedPath)
 
                 if (
                     renderedFile.exists() &&
                     renderedFile.length() > 0
                 ) {
-                    finalBitmap = BitmapFactory.decodeFile(
-                        renderedFile.absolutePath
-                    )
-                }
-            }
-
-            if (!backgroundPath.isNullOrEmpty()) {
-                val backgroundFile = File(backgroundPath)
-
-                if (
-                    backgroundFile.exists() &&
-                    backgroundFile.length() > 0
-                ) {
-                    val backgroundBitmap =
+                    finalBitmap =
                         BitmapFactory.decodeFile(
-                            backgroundFile.absolutePath
+                            renderedFile.absolutePath
                         )
-
-                    if (backgroundBitmap != null) {
-
-                        val renderedBitmap = finalBitmap
-
-                        if (renderedBitmap != null) {
-
-                            val width = renderedBitmap.width
-                            val height = renderedBitmap.height
-
-                            val composedBitmap =
-                                Bitmap.createBitmap(
-                                    width,
-                                    height,
-                                    Bitmap.Config.ARGB_8888
-                                )
-
-                            val canvas =
-                                Canvas(composedBitmap)
-
-                            val sourceWidth =
-                                backgroundBitmap.width.toFloat()
-
-                            val sourceHeight =
-                                backgroundBitmap.height.toFloat()
-
-                            val targetWidth =
-                                width.toFloat()
-
-                            val targetHeight =
-                                height.toFloat()
-
-                            val sourceRatio =
-                                sourceWidth / sourceHeight
-
-                            val targetRatio =
-                                targetWidth / targetHeight
-
-                            val srcRect: Rect
-
-                            if (sourceRatio > targetRatio) {
-
-                                val cropWidth =
-                                    sourceHeight * targetRatio
-
-                                val left =
-                                    (sourceWidth - cropWidth) / 2f
-
-                                srcRect = Rect(
-                                    left.toInt(),
-                                    0,
-                                    (left + cropWidth).toInt(),
-                                    sourceHeight.toInt()
-                                )
-
-                            } else {
-
-                                val cropHeight =
-                                    sourceWidth / targetRatio
-
-                                val top =
-                                    (sourceHeight - cropHeight) / 2f
-
-                                srcRect = Rect(
-                                    0,
-                                    top.toInt(),
-                                    sourceWidth.toInt(),
-                                    (top + cropHeight).toInt()
-                                )
-                            }
-
-                            val dstRect =
-                                RectF(
-                                    0f,
-                                    0f,
-                                    targetWidth,
-                                    targetHeight
-                                )
-
-                            val paint =
-                                Paint(
-                                    Paint.ANTI_ALIAS_FLAG
-                                )
-
-                            canvas.drawBitmap(
-                                backgroundBitmap,
-                                srcRect,
-                                dstRect,
-                                paint
-                            )
-
-                            canvas.drawBitmap(
-                                renderedBitmap,
-                                0f,
-                                0f,
-                                paint
-                            )
-
-                            finalBitmap =
-                                composedBitmap
-
-                        } else {
-
-                            finalBitmap =
-                                backgroundBitmap
-                        }
-                    }
                 }
             }
 
+            /*
+             * Якщо готовий Flutter PNG існує —
+             * саме його показуємо у віджеті.
+             */
             if (finalBitmap != null) {
 
                 views.setImageViewBitmap(
@@ -184,6 +74,9 @@ class WidgetProvider : HomeWidgetProvider() {
                 )
             }
 
+            /*
+             * Натискання на віджет відкриває застосунок.
+             */
             val intent =
                 Intent(
                     context,
@@ -215,8 +108,9 @@ class WidgetProvider : HomeWidgetProvider() {
         }
 
         /*
-         * Запускаємо/перезапускаємо точний
-         * погодинний AlarmManager.
+         * Після створення/оновлення віджета
+         * переконуємося, що погодинний alarm
+         * встановлений.
          */
         HourlyWidgetUpdateReceiver.schedule(context)
     }
