@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import java.util.Calendar
 
 class HourlyWidgetUpdateReceiver : BroadcastReceiver() {
@@ -25,33 +26,9 @@ class HourlyWidgetUpdateReceiver : BroadcastReceiver() {
         private const val UPDATE_URI =
             "timeofwar://hourly_update"
 
-        fun schedule(
+        private fun pendingIntent(
             context: Context
-        ) {
-
-            val prefs =
-                context.getSharedPreferences(
-                    "HomeWidgetPreferences",
-                    Context.MODE_PRIVATE
-                )
-
-            /*
-             * Якщо показ годин вимкнений,
-             * погодинний будильник не потрібен.
-             */
-            if (!prefs.getBoolean(
-                    "showHour",
-                    true
-                )
-            ) {
-                cancel(context)
-                return
-            }
-
-            val alarmManager =
-                context.getSystemService(
-                    Context.ALARM_SERVICE
-                ) as AlarmManager
+        ): PendingIntent {
 
             val intent =
                 Intent(
@@ -62,34 +39,33 @@ class HourlyWidgetUpdateReceiver : BroadcastReceiver() {
                         ACTION_HOURLY_UPDATE
                 }
 
-            val pendingIntent =
-                PendingIntent.getBroadcast(
-                    context,
-                    REQUEST_CODE,
-                    intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or
-                        PendingIntent.FLAG_IMMUTABLE
-                )
+            return PendingIntent.getBroadcast(
+                context,
+                REQUEST_CODE,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or
+                    PendingIntent.FLAG_IMMUTABLE
+            )
+        }
 
-            /*
-             * Наступне оновлення рівно о XX:01:00.
-             *
-             * Наприклад:
-             * 13:01 -> наступне 14:01
-             * 14:01 -> наступне 15:01
-             */
+        /*
+         * Наступний запуск завжди:
+         *
+         * 13:01:00
+         * 14:01:00
+         * 15:01:00
+         *
+         * Якщо зараз 13:01:30 —
+         * наступний буде 14:01:00,
+         * а не 13:01:00.
+         */
+        private fun nextUpdateTime(): Long {
+
+            val now =
+                Calendar.getInstance()
+
             val next =
                 Calendar.getInstance().apply {
-
-                    add(
-                        Calendar.HOUR_OF_DAY,
-                        1
-                    )
-
-                    set(
-                        Calendar.MINUTE,
-                        1
-                    )
 
                     set(
                         Calendar.SECOND,
@@ -100,40 +76,134 @@ class HourlyWidgetUpdateReceiver : BroadcastReceiver() {
                         Calendar.MILLISECOND,
                         0
                     )
+
+                    set(
+                        Calendar.MINUTE,
+                        1
+                    )
+
+                    set(
+                        Calendar.HOUR_OF_DAY,
+                        now.get(
+                            Calendar.HOUR_OF_DAY
+                        ) + 1
+                    )
                 }
 
+            /*
+             * Додатковий захист:
+             * якщо через перехід часу або іншу
+             * особливість next опинився в минулому,
+             * переносимо його ще на годину.
+             */
+            if (
+                next.timeInMillis <=
+                now.timeInMillis
+            ) {
+                next.add(
+                    Calendar.HOUR_OF_DAY,
+                    1
+                )
+            }
+
+            return next.timeInMillis
+        }
+
+        fun schedule(
+            context: Context
+        ) {
+
+            val alarmManager =
+                context.getSystemService(
+                    Context.ALARM_SERVICE
+                ) as AlarmManager
+
+            val pi =
+                pendingIntent(context)
+
+            val triggerTime =
+                nextUpdateTime()
+
+            /*
+             * ВАЖЛИВО:
+             *
+             * Alarm НЕ вимикаємо, якщо
+             * showHour == false.
+             *
+             * Навіть у режимі "Облік в днях"
+             * віджет повинен перейти на нову
+             * добу.
+             */
             try {
 
-                /*
-                 * Точний alarm навіть у Doze.
-                 *
-                 * Для Android 12+ необхідно,
-                 * щоб користувач дозволив
-                 * "Будильники та нагадування".
-                 */
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    next.timeInMillis,
-                    pendingIntent
-                )
+                if (
+                    Build.VERSION.SDK_INT >=
+                    Build.VERSION_CODES.S
+                ) {
+
+                    if (
+                        alarmManager
+                            .canScheduleExactAlarms()
+                    ) {
+
+                        alarmManager
+                            .setExactAndAllowWhileIdle(
+                                AlarmManager.RTC_WAKEUP,
+                                triggerTime,
+                                pi
+                            )
+
+                    } else {
+
+                        /*
+                         * Точний alarm ще недоступний.
+                         *
+                         * Ставимо резервний alarm,
+                         * щоб віджет все одно оновлювався.
+                         *
+                         * Після надання користувачем
+                         * доступу система передасть
+                         * ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED,
+                         * і ми знову поставимо точний alarm.
+                         */
+                        alarmManager
+                            .setAndAllowWhileIdle(
+                                AlarmManager.RTC_WAKEUP,
+                                triggerTime,
+                                pi
+                            )
+                    }
+
+                } else {
+
+                    alarmManager
+                        .setExactAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            triggerTime,
+                            pi
+                        )
+                }
 
             } catch (
                 e: SecurityException
             ) {
 
                 /*
-                 * Якщо дозвіл на точні alarm
-                 * ще не наданий, не падаємо.
-                 *
-                 * Після надання дозволу наступний
-                 * виклик schedule() поставить
-                 * точний alarm.
+                 * Додатковий захист від SecurityException.
                  */
-                alarmManager.setAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    next.timeInMillis,
-                    pendingIntent
-                )
+                try {
+
+                    alarmManager
+                        .setAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            triggerTime,
+                            pi
+                        )
+
+                } catch (
+                    ignored: Exception
+                ) {
+                }
             }
         }
 
@@ -146,29 +216,12 @@ class HourlyWidgetUpdateReceiver : BroadcastReceiver() {
                     Context.ALARM_SERVICE
                 ) as AlarmManager
 
-            val intent =
-                Intent(
-                    context,
-                    HourlyWidgetUpdateReceiver::class.java
-                ).apply {
-                    action =
-                        ACTION_HOURLY_UPDATE
-                }
+            val pi =
+                pendingIntent(context)
 
-            val pendingIntent =
-                PendingIntent.getBroadcast(
-                    context,
-                    REQUEST_CODE,
-                    intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or
-                        PendingIntent.FLAG_IMMUTABLE
-                )
+            alarmManager.cancel(pi)
 
-            alarmManager.cancel(
-                pendingIntent
-            )
-
-            pendingIntent.cancel()
+            pi.cancel()
         }
     }
 
@@ -180,12 +233,45 @@ class HourlyWidgetUpdateReceiver : BroadcastReceiver() {
         when (intent.action) {
 
             /*
-             * Android після перезавантаження
-             * телефона.
+             * Після перезавантаження телефона.
              */
             Intent.ACTION_BOOT_COMPLETED -> {
 
                 schedule(context)
+                return
+            }
+
+            /*
+             * Після оновлення/перевстановлення
+             * APK поверх старої версії.
+             */
+            Intent.ACTION_MY_PACKAGE_REPLACED -> {
+
+                schedule(context)
+                return
+            }
+
+            /*
+             * Користувач надав доступ
+             * "Будильники та нагадування".
+             *
+             * Відразу ставимо точний alarm.
+             */
+            AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED -> {
+
+                val alarmManager =
+                    context.getSystemService(
+                        Context.ALARM_SERVICE
+                    ) as AlarmManager
+
+                if (
+                    Build.VERSION.SDK_INT <
+                    Build.VERSION_CODES.S ||
+                    alarmManager.canScheduleExactAlarms()
+                ) {
+                    schedule(context)
+                }
+
                 return
             }
 
@@ -197,31 +283,9 @@ class HourlyWidgetUpdateReceiver : BroadcastReceiver() {
 
             ACTION_HOURLY_UPDATE -> {
 
-                val prefs =
-                    context.getSharedPreferences(
-                        "HomeWidgetPreferences",
-                        Context.MODE_PRIVATE
-                    )
-
-                /*
-                 * Якщо користувач вимкнув
-                 * "Показ годин" — більше
-                 * нічого не плануємо.
-                 */
-                if (!prefs.getBoolean(
-                        "showHour",
-                        true
-                    )
-                ) {
-
-                    cancel(context)
-                    return
-                }
-
                 /*
                  * Передаємо команду HomeWidget
-                 * на виконання backgroundCallback
-                 * у main.dart.
+                 * на backgroundCallback у main.dart.
                  */
                 val backgroundIntent =
                     Intent(
@@ -238,16 +302,27 @@ class HourlyWidgetUpdateReceiver : BroadcastReceiver() {
                             )
                     }
 
-                context.sendBroadcast(
-                    backgroundIntent
-                )
+                try {
+
+                    context.sendBroadcast(
+                        backgroundIntent
+                    )
+
+                } catch (
+                    ignored: Exception
+                ) {
+                }
 
                 /*
-                 * Дуже важливо:
-                 * після спрацювання поточного alarm
-                 * ставимо наступний.
+                 * AlarmManager використовуємо
+                 * одноразовими точними alarm.
+                 *
+                 * Після кожного спрацювання
+                 * встановлюємо наступний.
                  */
                 schedule(context)
+
+                return
             }
         }
     }
