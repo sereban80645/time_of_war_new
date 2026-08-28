@@ -14,7 +14,7 @@ dependencies:
   home_widget: ^0.9.3
   image_picker: ^1.1.1
   image_cropper: ^12.2.1
-  workmanager: ^0.9.0+3
+  android_alarm_manager_plus: ^4.0.8
 
 dev_dependencies:
   flutter_test:
