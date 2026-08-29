@@ -263,11 +263,7 @@ Future<void> alarmCallback() async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
 
-  try {
-    await _updateWidgetInBackground();
-  } finally {
-    await _scheduleNextHourlyAlarm();
-  }
+  await _updateWidgetInBackground();
 }
 
 Future<void> _updateWidgetInBackground() async {
@@ -398,6 +394,20 @@ Future<void> _updateWidgetInBackground() async {
       time2014,
     );
 
+    if (imagePath != null &&
+        imagePath.isNotEmpty &&
+        File(imagePath).existsSync()) {
+      try {
+        final bytes =
+            await File(imagePath).readAsBytes();
+        await decodeImageFromList(bytes);
+      } catch (e) {
+        debugPrint(
+          'Background image precache error: $e',
+        );
+      }
+    }
+
     await HomeWidget.renderFlutterWidget(
       TimeOfWarWidgetRender(
         show2022:
@@ -449,31 +459,10 @@ Future<void> _updateWidgetInBackground() async {
   }
 }
 
-Future<void> _scheduleNextHourlyAlarm() async {
+Future<void> _registerPeriodicWidgetAlarm() async {
   try {
-    final now = DateTime.now();
-
-    DateTime next =
-        DateTime(
-          now.year,
-          now.month,
-          now.day,
-          now.hour,
-          1,
-        );
-
-    if (!next.isAfter(now)) {
-      next = next.add(
-        const Duration(hours: 1),
-      );
-    }
-
-    await AndroidAlarmManager.cancel(
-      widgetAlarmId,
-    );
-
-    await AndroidAlarmManager.oneShotAt(
-      next,
+    await AndroidAlarmManager.periodic(
+      const Duration(minutes: 15),
       widgetAlarmId,
       alarmCallback,
       exact: true,
@@ -791,6 +780,21 @@ class _TimeOfWarScreenState
         _imagePath,
       );
 
+      if (_imagePath != null &&
+          _imagePath!.isNotEmpty &&
+          File(_imagePath!).existsSync()) {
+        try {
+          final bytes =
+              await File(_imagePath!)
+                  .readAsBytes();
+          await decodeImageFromList(bytes);
+        } catch (e) {
+          debugPrint(
+            'Background image precache error: $e',
+          );
+        }
+      }
+
       await HomeWidget.renderFlutterWidget(
         TimeOfWarWidgetRender(
           show2022: _show2022,
@@ -918,6 +922,16 @@ class _TimeOfWarScreenState
 
       if (savedPath.isEmpty) {
         return;
+      }
+
+      try {
+        final bytes =
+            await File(savedPath).readAsBytes();
+        await decodeImageFromList(bytes);
+      } catch (e) {
+        debugPrint(
+          'Background image precache error: $e',
+        );
       }
 
       final prefs =
@@ -1551,7 +1565,7 @@ Future<void> main() async {
 
   await AndroidAlarmManager.initialize();
 
-  await _scheduleNextHourlyAlarm();
+  await _registerPeriodicWidgetAlarm();
 
   runApp(
     const MyApp(),
