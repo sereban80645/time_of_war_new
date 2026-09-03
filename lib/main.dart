@@ -778,6 +778,7 @@ class _TimeOfWarScreenState
       await HomeWidget.saveWidgetData<String?>(
         'imagePath',
         _imagePath,
+        deleteFile: false,
       );
 
       if (_imagePath != null &&
@@ -946,6 +947,7 @@ class _TimeOfWarScreenState
       await HomeWidget.saveWidgetData<String>(
         'imagePath',
         savedPath,
+        deleteFile: false,
       );
 
       if (!mounted) return;
