@@ -27,6 +27,7 @@ String calculateTimeDifference(
   if (showDaysOnly) {
     final difference = now.difference(startDate);
     final totalDays = difference.inDays + 1;
+
     var hours = now.hour - startDate.hour;
 
     if (hours < 0) {
@@ -54,8 +55,10 @@ String calculateTimeDifference(
 
   if (days < 0) {
     months--;
+
     final previousMonth =
         DateTime(now.year, now.month, 0);
+
     days += previousMonth.day;
   }
 
@@ -68,10 +71,10 @@ String calculateTimeDifference(
 
   final daysInCurrentMonth =
       DateTime(
-        now.year,
-        now.month + 1,
-        0,
-      ).day;
+    now.year,
+    now.month + 1,
+    0,
+  ).day;
 
   if (days > daysInCurrentMonth) {
     days -= daysInCurrentMonth;
@@ -111,7 +114,8 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class TimeOfWarWidgetRender extends StatelessWidget {
+class TimeOfWarWidgetRender
+    extends StatelessWidget {
   final bool show2022;
   final bool show2014;
   final String time2022;
@@ -137,7 +141,9 @@ class TimeOfWarWidgetRender extends StatelessWidget {
     this.imagePath,
   });
 
-  Widget _buildOutlinedText(String text) {
+  Widget _buildOutlinedText(
+    String text,
+  ) {
     return Stack(
       children: [
         Text(
@@ -193,9 +199,11 @@ class TimeOfWarWidgetRender extends StatelessWidget {
           width: double.infinity,
           height: double.infinity,
           alignment: Alignment.center,
-          color: hasImage
-              ? bgColor
-              : Colors.transparent,
+          decoration: BoxDecoration(
+            color: hasImage
+                ? bgColor
+                : Colors.transparent,
+          ),
           padding:
               const EdgeInsets.symmetric(
             vertical: 40,
@@ -255,6 +263,7 @@ Future<void> backgroundCallback(
 ) async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
+
   await _updateWidgetInBackground();
 }
 
@@ -394,20 +403,6 @@ Future<void> _updateWidgetInBackground() async {
       time2014,
     );
 
-    if (imagePath != null &&
-        imagePath.isNotEmpty &&
-        File(imagePath).existsSync()) {
-      try {
-        final bytes =
-            await File(imagePath).readAsBytes();
-        await decodeImageFromList(bytes);
-      } catch (e) {
-        debugPrint(
-          'Background image precache error: $e',
-        );
-      }
-    }
-
     await HomeWidget.renderFlutterWidget(
       TimeOfWarWidgetRender(
         show2022:
@@ -459,7 +454,8 @@ Future<void> _updateWidgetInBackground() async {
   }
 }
 
-Future<void> _registerPeriodicWidgetAlarm() async {
+Future<void>
+    _registerPeriodicWidgetAlarm() async {
   try {
     await AndroidAlarmManager.periodic(
       const Duration(minutes: 15),
@@ -539,13 +535,13 @@ class _TimeOfWarScreenState
   void dispose() {
     _timer?.cancel();
     _debounce?.cancel();
+
     super.dispose();
   }
 
   Future<void> _loadSettings() async {
     final prefs =
-        await SharedPreferences
-            .getInstance();
+        await SharedPreferences.getInstance();
 
     if (!mounted) return;
 
@@ -626,8 +622,7 @@ class _TimeOfWarScreenState
     dynamic value,
   ) async {
     final prefs =
-        await SharedPreferences
-            .getInstance();
+        await SharedPreferences.getInstance();
 
     if (value is bool) {
       await prefs.setBool(
@@ -775,25 +770,24 @@ class _TimeOfWarScreenState
         _sb,
       );
 
-      await HomeWidget.saveWidgetData<String?>(
-        'imagePath',
-        _imagePath,
-        deleteFile: false,
-      );
-
       if (_imagePath != null &&
-          _imagePath!.isNotEmpty &&
-          File(_imagePath!).existsSync()) {
-        try {
-          final bytes =
-              await File(_imagePath!)
-                  .readAsBytes();
-          await decodeImageFromList(bytes);
-        } catch (e) {
-          debugPrint(
-            'Background image precache error: $e',
+          _imagePath!.isNotEmpty) {
+        final imageFile =
+            File(_imagePath!);
+
+        if (await imageFile.exists()) {
+          await HomeWidget.saveWidgetData<String>(
+            'imagePath',
+            _imagePath!,
+            deleteFile: false,
           );
         }
+      } else {
+        await HomeWidget.saveWidgetData<String?>(
+          'imagePath',
+          null,
+          deleteFile: false,
+        );
       }
 
       await HomeWidget.renderFlutterWidget(
@@ -833,6 +827,7 @@ class _TimeOfWarScreenState
 
       if (_widgetUpdateQueued) {
         _widgetUpdateQueued = false;
+
         _scheduleWidgetUpdate();
       }
     }
@@ -913,37 +908,76 @@ class _TimeOfWarScreenState
       final finalPath =
           cropped ?? pickedFile.path;
 
-      final savedPath =
-          await HomeWidget.saveImage(
-        'widget_background',
-        FileImage(
-          File(finalPath),
-        ),
-      );
+      final sourceFile =
+          File(finalPath);
 
-      if (savedPath.isEmpty) {
+      if (!await sourceFile.exists()) {
+        debugPrint(
+          'Selected image does not exist.',
+        );
         return;
       }
 
+      /*
+       * HomeWidget.saveImage() створює власну
+       * копію зображення у сховищі HomeWidget.
+       *
+       * Саме цей шлях потім використовує
+       * віджет.
+       */
+      final savedPath =
+          await HomeWidget.saveImage(
+        'widget_background',
+        FileImage(sourceFile),
+      );
+
+      if (savedPath.isEmpty) {
+        debugPrint(
+          'HomeWidget.saveImage returned empty path.',
+        );
+        return;
+      }
+
+      final savedFile =
+          File(savedPath);
+
+      if (!await savedFile.exists()) {
+        debugPrint(
+          'Saved image does not exist: $savedPath',
+        );
+        return;
+      }
+
+      /*
+       * Перевіряємо PNG перед тим,
+       * як записувати його у налаштування.
+       */
       try {
         final bytes =
-            await File(savedPath).readAsBytes();
+            await savedFile.readAsBytes();
+
         await decodeImageFromList(bytes);
       } catch (e) {
         debugPrint(
-          'Background image precache error: $e',
+          'Saved image decode error: $e',
         );
+        return;
       }
 
+      /*
+       * Зберігаємо шлях локально.
+       */
       final prefs =
-          await SharedPreferences
-              .getInstance();
+          await SharedPreferences.getInstance();
 
       await prefs.setString(
         'imagePath',
         savedPath,
       );
 
+      /*
+       * Зберігаємо шлях для HomeWidget.
+       */
       await HomeWidget.saveWidgetData<String>(
         'imagePath',
         savedPath,
@@ -952,14 +986,25 @@ class _TimeOfWarScreenState
 
       if (!mounted) return;
 
+      /*
+       * Оновлюємо екран.
+       */
       setState(() {
         _imagePath = savedPath;
       });
 
+      /*
+       * Оновлюємо віджет тільки після того,
+       * як картинка вже гарантовано збережена.
+       */
       await _updateHomeWidget();
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint(
         'Background image error: $e',
+      );
+
+      debugPrint(
+        '$stackTrace',
       );
     }
   }
@@ -1197,6 +1242,7 @@ class _TimeOfWarScreenState
               () => _show2022 =
                   value,
             );
+
             _saveSetting(
               'show2022',
               value,
@@ -1211,6 +1257,7 @@ class _TimeOfWarScreenState
               () => _show2014 =
                   value,
             );
+
             _saveSetting(
               'show2014',
               value,
@@ -1225,6 +1272,7 @@ class _TimeOfWarScreenState
               () => _showHour =
                   value,
             );
+
             _saveSetting(
               'showHour',
               value,
@@ -1239,6 +1287,7 @@ class _TimeOfWarScreenState
               () => _showDaysOnly =
                   value,
             );
+
             _saveSetting(
               'showDaysOnly',
               value,
@@ -1262,6 +1311,7 @@ class _TimeOfWarScreenState
               () => _opacity =
                   value,
             );
+
             _saveSetting(
               'opacity',
               value,
@@ -1282,6 +1332,7 @@ class _TimeOfWarScreenState
               () => _fontSize =
                   value,
             );
+
             _saveSetting(
               'fontSize',
               value,
@@ -1349,14 +1400,17 @@ class _TimeOfWarScreenState
               _tg = g;
               _tb = b;
             });
+
             _saveSetting(
               'tr',
               r,
             );
+
             _saveSetting(
               'tg',
               g,
             );
+
             _saveSetting(
               'tb',
               b,
@@ -1387,14 +1441,17 @@ class _TimeOfWarScreenState
               _bg = g;
               _bb = b;
             });
+
             _saveSetting(
               'br',
               r,
             );
+
             _saveSetting(
               'bg',
               g,
             );
+
             _saveSetting(
               'bb',
               b,
@@ -1430,14 +1487,17 @@ class _TimeOfWarScreenState
               _sg = g;
               _sb = b;
             });
+
             _saveSetting(
               'sr',
               r,
             );
+
             _saveSetting(
               'sg',
               g,
             );
+
             _saveSetting(
               'sb',
               b,
@@ -1463,6 +1523,7 @@ class _TimeOfWarScreenState
               () => _strokeWidth =
                   value,
             );
+
             _saveSetting(
               'strokeWidth',
               value,
