@@ -457,10 +457,19 @@ Future<void> _updateWidgetInBackground() async {
 Future<void>
     _registerPeriodicWidgetAlarm() async {
   try {
+    // Щогодинний таймер, вирівняний на :01 хвилину кожної години
+    DateTime nowForHour = DateTime.now();
+    DateTime nextHour = DateTime(nowForHour.year, nowForHour.month, nowForHour.day, nowForHour.hour)
+        .add(const Duration(hours: 1, minutes: 1));
+    if (nextHour.isBefore(nowForHour)) {
+      nextHour = nextHour.add(const Duration(hours: 1));
+    }
+
     await AndroidAlarmManager.periodic(
-      const Duration(minutes: 15),
+      const Duration(hours: 1),
       widgetAlarmId,
       alarmCallback,
+      startAt: nextHour,
       exact: true,
       wakeup: true,
       allowWhileIdle: true,
@@ -918,13 +927,6 @@ class _TimeOfWarScreenState
         return;
       }
 
-      /*
-       * HomeWidget.saveImage() створює власну
-       * копію зображення у сховищі HomeWidget.
-       *
-       * Саме цей шлях потім використовує
-       * віджет.
-       */
       final savedPath =
           await HomeWidget.saveImage(
         'widget_background',
@@ -948,10 +950,6 @@ class _TimeOfWarScreenState
         return;
       }
 
-      /*
-       * Перевіряємо PNG перед тим,
-       * як записувати його у налаштування.
-       */
       try {
         final bytes =
             await savedFile.readAsBytes();
@@ -964,9 +962,6 @@ class _TimeOfWarScreenState
         return;
       }
 
-      /*
-       * Зберігаємо шлях локально.
-       */
       final prefs =
           await SharedPreferences.getInstance();
 
@@ -975,9 +970,6 @@ class _TimeOfWarScreenState
         savedPath,
       );
 
-      /*
-       * Зберігаємо шлях для HomeWidget.
-       */
       await HomeWidget.saveWidgetData<String>(
         'imagePath',
         savedPath,
@@ -986,17 +978,10 @@ class _TimeOfWarScreenState
 
       if (!mounted) return;
 
-      /*
-       * Оновлюємо екран.
-       */
       setState(() {
         _imagePath = savedPath;
       });
 
-      /*
-       * Оновлюємо віджет тільки після того,
-       * як картинка вже гарантовано збережена.
-       */
       await _updateHomeWidget();
     } catch (e, stackTrace) {
       debugPrint(
