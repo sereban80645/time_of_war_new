@@ -1,137 +1,57 @@
 package com.example.time_of_war
 
-import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
-import android.content.Intent
 import android.content.SharedPreferences
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.widget.RemoteViews
+import android.graphics.BitmapFactory
+import android.app.PendingIntent
+import android.content.Intent
 import es.antonborri.home_widget.HomeWidgetProvider
 import java.io.File
 
 class WidgetProvider : HomeWidgetProvider() {
+    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray, widgetData: SharedPreferences) {
+        val res = context.resources
+        val layoutId = res.getIdentifier("widget_layout", "layout", "com.example.time_of_war")
+        val rootId = res.getIdentifier("widget_root", "id", "com.example.time_of_war")
+        val imageId = res.getIdentifier("widget_image", "id", "com.example.time_of_war")
+        val textId = res.getIdentifier("widget_text", "id", "com.example.time_of_war")
 
-    override fun onUpdate(
-        context: Context,
-        appWidgetManager: AppWidgetManager,
-        appWidgetIds: IntArray,
-        widgetData: SharedPreferences
-    ) {
+        if (layoutId == 0) return
+
         for (appWidgetId in appWidgetIds) {
+            val views = RemoteViews("com.example.time_of_war", layoutId)
 
-            val views = RemoteViews(
-                context.packageName,
-                R.layout.widget_layout
-            )
-
-            /*
-             * Flutter вже генерує ГОТОВИЙ PNG:
-             *
-             * - фон
-             * - фотографія
-             * - прозорість
-             * - два лічильники
-             * - текст
-             * - контур
-             *
-             * Тому тут більше НЕ складаємо
-             * backgroundBitmap + renderedBitmap.
-             */
-
-            val renderedPath = widgetData.getString(
-                "widget_rendered",
-                null
-            )
-
-            var finalBitmap: Bitmap? = null
-
-            if (!renderedPath.isNullOrEmpty()) {
-
-                val renderedFile = File(renderedPath)
-
-                if (
-                    renderedFile.exists() &&
-                    renderedFile.length() > 0
-                ) {
-                    finalBitmap =
-                        BitmapFactory.decodeFile(
-                            renderedFile.absolutePath
-                        )
+            val imagePath = widgetData.getString("widget_image", null) ?: widgetData.getString("filename", null)
+            if (imagePath != null) {
+                val file = File(imagePath)
+                if (file.exists()) {
+                    val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+                    if (bitmap != null && imageId != 0) {
+                        views.setImageViewBitmap(imageId, bitmap)
+                        // Ховаємо текст-підказку, коли картинка готова
+                        if (textId != 0) views.setViewVisibility(textId, android.view.View.GONE)
+                    }
                 }
             }
 
-            /*
-             * Якщо готовий Flutter PNG існує —
-             * саме його показуємо у віджеті.
-             */
-            if (finalBitmap != null) {
+            // ПРЯМИЙ виклик прихованого MainActivity замість стандартного
+            val intent = Intent()
+            intent.setClassName(context, "com.example.time_of_war.MainActivity")
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
 
-                views.setImageViewBitmap(
-                    R.id.widget_image,
-                    finalBitmap
-                )
-            }
-
-            /*
-             * Натискання на віджет відкриває застосунок.
-             */
-            val intent =
-                Intent(
-                    context,
-                    MainActivity::class.java
-                ).apply {
-                    flags =
-                        Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_ACTIVITY_CLEAR_TOP
-                }
-
-            val pendingIntent =
-                PendingIntent.getActivity(
-                    context,
-                    appWidgetId,
-                    intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or
-                        PendingIntent.FLAG_IMMUTABLE
-                )
-
-            views.setOnClickPendingIntent(
-                R.id.widget_root,
-                pendingIntent
+            val pendingIntent = PendingIntent.getActivity(
+                context, 
+                0, 
+                intent, 
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
+            
+            if (rootId != 0) views.setOnClickPendingIntent(rootId, pendingIntent)
+            if (imageId != 0) views.setOnClickPendingIntent(imageId, pendingIntent)
 
-            appWidgetManager.updateAppWidget(
-                appWidgetId,
-                views
-            )
+            appWidgetManager.updateAppWidget(appWidgetId, views)
         }
-
-        /*
-         * Після створення/оновлення віджета
-         * переконуємося, що погодинний alarm
-         * встановлений.
-         */
-        HourlyWidgetUpdateReceiver.schedule(context)
-    }
-
-    override fun onEnabled(
-        context: Context
-    ) {
-        super.onEnabled(context)
-
-        HourlyWidgetUpdateReceiver.schedule(
-            context
-        )
-    }
-
-    override fun onDisabled(
-        context: Context
-    ) {
-        HourlyWidgetUpdateReceiver.cancel(
-            context
-        )
-
-        super.onDisabled(context)
     }
 }
