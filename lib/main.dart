@@ -397,7 +397,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 40, maxWidth: 800, maxHeight: 800);
     if (pickedFile != null) {
       String? cropped = await _cropImage(pickedFile.path);
       String sourcePath = cropped ?? pickedFile.path;
