@@ -21,14 +21,18 @@ class WidgetProvider : HomeWidgetProvider() {
     ) {
         val packageName = context.packageName
         val layoutId = context.resources.getIdentifier("widget_layout", "layout", packageName)
-        if (layoutId == 0) {
-            Log.e("TimeOfWarWidget", "widget_layout not found")
-            return
-        }
-
         val rootId = context.resources.getIdentifier("widget_root", "id", packageName)
         val imageId = context.resources.getIdentifier("widget_image", "id", packageName)
         val textId = context.resources.getIdentifier("widget_text", "id", packageName)
+
+        Log.d("TimeOfWarWidget", "onUpdate package=$packageName ids=${appWidgetIds.joinToString()}")
+        Log.d("TimeOfWarWidget", "resources layout=$layoutId root=$rootId image=$imageId text=$textId")
+
+        if (layoutId == 0 || rootId == 0 || imageId == 0 || textId == 0) {
+            Log.e("TimeOfWarWidget", "Widget resources are missing")
+            return
+        }
+
         val imagePath = widgetData.getString("widget_image", null)
             ?: widgetData.getString("filename", null)
 
@@ -36,23 +40,33 @@ class WidgetProvider : HomeWidgetProvider() {
 
         for (appWidgetId in appWidgetIds) {
             val views = RemoteViews(packageName, layoutId)
+
+            // Native fallback is deliberately visible first. This proves the Android
+            // widget itself is rendering even when the Flutter PNG is unavailable.
+            views.setViewVisibility(imageId, View.GONE)
             views.setViewVisibility(textId, View.VISIBLE)
             views.setTextViewText(textId, "Час Війни")
 
-            if (imagePath != null) {
+            var rendered = false
+            if (!imagePath.isNullOrBlank()) {
                 val file = File(imagePath)
+                Log.d("TimeOfWarWidget", "image exists=${file.exists()} size=${file.length()} path=${file.absolutePath}")
                 if (file.exists() && file.length() > 0L) {
                     val bitmap = BitmapFactory.decodeFile(file.absolutePath)
-                    if (bitmap != null && imageId != 0) {
+                    if (bitmap != null) {
                         views.setImageViewBitmap(imageId, bitmap)
+                        views.setViewVisibility(imageId, View.VISIBLE)
                         views.setViewVisibility(textId, View.GONE)
-                        Log.d("TimeOfWarWidget", "Rendered widget image ${bitmap.width}x${bitmap.height}")
+                        rendered = true
+                        Log.d("TimeOfWarWidget", "Rendered Flutter bitmap ${bitmap.width}x${bitmap.height}")
                     } else {
-                        Log.e("TimeOfWarWidget", "Could not decode widget image: $imagePath")
+                        Log.e("TimeOfWarWidget", "BitmapFactory could not decode $imagePath")
                     }
                 } else {
-                    Log.e("TimeOfWarWidget", "Widget image does not exist: $imagePath")
+                    Log.e("TimeOfWarWidget", "Flutter widget image does not exist or is empty")
                 }
+            } else {
+                Log.e("TimeOfWarWidget", "No Flutter widget image path in SharedPreferences")
             }
 
             val intent = Intent(context, MainActivity::class.java).apply {
@@ -65,10 +79,10 @@ class WidgetProvider : HomeWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
-            if (rootId != 0) views.setOnClickPendingIntent(rootId, pendingIntent)
-            if (imageId != 0) views.setOnClickPendingIntent(imageId, pendingIntent)
-
+            views.setOnClickPendingIntent(rootId, pendingIntent)
+            views.setOnClickPendingIntent(imageId, pendingIntent)
             appWidgetManager.updateAppWidget(appWidgetId, views)
+            Log.d("TimeOfWarWidget", "updateAppWidget id=$appWidgetId rendered=$rendered")
         }
     }
 }

@@ -10,17 +10,17 @@
         android:id="@+id/widget_image"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#121212"
+        android:background="@android:color/transparent"
         android:scaleType="fitXY"
-        android:visibility="visible" />
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/widget_text"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:gravity="center"
-        android:text="Time of War"
+        android:text="Час Війни"
         android:textColor="#FFFFFFFF"
         android:textSize="18sp"
-        android:visibility="gone" />
+        android:visibility="visible" />
 </FrameLayout>
