@@ -264,7 +264,10 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
-    String? storedImagePath = prefs.getString('imagePath');
+    // Keep two copies of the background:
+    // imagePath is the permanent source in app storage; widget_background
+    // is the HomeWidget shared-storage copy used for rendering.
+    final sourceImagePath = prefs.getString('imagePath');
     String? stableImagePath;
 
     try {
@@ -275,20 +278,17 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
           widgetImagePath.isNotEmpty &&
           File(widgetImagePath).existsSync()) {
         stableImagePath = widgetImagePath;
-      } else if (storedImagePath != null &&
-          storedImagePath.isNotEmpty &&
-          File(storedImagePath).existsSync()) {
+      } else if (sourceImagePath != null &&
+          sourceImagePath.isNotEmpty &&
+          File(sourceImagePath).existsSync()) {
         stableImagePath = await HomeWidget.saveImage(
           'widget_background',
-          FileImage(File(storedImagePath)),
+          FileImage(File(sourceImagePath)),
         );
+        debugPrint('Background image restored to HomeWidget storage');
       }
     } catch (e) {
       debugPrint('Background migration error: $e');
-    }
-
-    if (stableImagePath != null && stableImagePath.isNotEmpty) {
-      await prefs.setString('imagePath', stableImagePath);
     }
 
     if (!mounted) return;
@@ -310,7 +310,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       _sr = prefs.getDouble('sr') ?? 0.0;
       _sg = prefs.getDouble('sg') ?? 0.0;
       _sb = prefs.getDouble('sb') ?? 0.0;
-      _imagePath = stableImagePath ?? storedImagePath;
+      _imagePath = stableImagePath;
     });
 
     await _updateHomeWidget();
@@ -444,8 +444,10 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         final persistentPath = docsDir.path + '/widget_bg_saved.png';
         final savedFile = await File(sourcePath).copy(persistentPath);
 
-        // Keep the selected photo in HomeWidget shared storage.
-        // The background isolate uses this same stable path.
+        // Keep the original source in app storage as a permanent recovery
+        // copy. The HomeWidget copy can be recreated if it disappears.
+        await _saveSetting('imagePath', savedFile.path);
+
         final widgetBackgroundPath = await HomeWidget.saveImage(
           'widget_background',
           FileImage(savedFile),
@@ -457,7 +459,6 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         }
 
         setState(() => _imagePath = widgetBackgroundPath);
-        await _saveSetting('imagePath', widgetBackgroundPath);
         await _updateHomeWidget();
       } catch (e) {
         debugPrint('Background image save error: $e');
@@ -584,10 +585,32 @@ void backgroundUpdate() async {
   String? imagePath =
       await HomeWidget.getWidgetData<String>('widget_background');
 
+  // If the shared copy disappeared, recreate it from the permanent
+  // app-storage copy before rendering the next background update.
   if (imagePath == null ||
       imagePath.isEmpty ||
       !File(imagePath).existsSync()) {
-    imagePath = prefs.getString('imagePath');
+    final sourceImagePath = prefs.getString('imagePath');
+
+    if (sourceImagePath != null &&
+        sourceImagePath.isNotEmpty &&
+        File(sourceImagePath).existsSync()) {
+      try {
+        imagePath = await HomeWidget.saveImage(
+          'widget_background',
+          FileImage(File(sourceImagePath)),
+        );
+
+        if (imagePath.isEmpty || !File(imagePath).existsSync()) {
+          imagePath = null;
+        } else {
+          debugPrint('Background image restored before background render');
+        }
+      } catch (e) {
+        debugPrint('Background image restore error: $e');
+        imagePath = null;
+      }
+    }
   }
 
   try {
