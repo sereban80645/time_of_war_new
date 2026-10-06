@@ -263,6 +263,36 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+
+    String? storedImagePath = prefs.getString('imagePath');
+    String? stableImagePath;
+
+    try {
+      final widgetImagePath =
+          await HomeWidget.getWidgetData<String>('widget_background');
+
+      if (widgetImagePath != null &&
+          widgetImagePath.isNotEmpty &&
+          File(widgetImagePath).existsSync()) {
+        stableImagePath = widgetImagePath;
+      } else if (storedImagePath != null &&
+          storedImagePath.isNotEmpty &&
+          File(storedImagePath).existsSync()) {
+        stableImagePath = await HomeWidget.saveImage(
+          'widget_background',
+          FileImage(File(storedImagePath)),
+        );
+      }
+    } catch (e) {
+      debugPrint('Background migration error: $e');
+    }
+
+    if (stableImagePath != null && stableImagePath.isNotEmpty) {
+      await prefs.setString('imagePath', stableImagePath);
+    }
+
+    if (!mounted) return;
+
     setState(() {
       _show2022 = prefs.getBool('show2022') ?? true;
       _show2014 = prefs.getBool('show2014') ?? false;
@@ -280,9 +310,10 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       _sr = prefs.getDouble('sr') ?? 0.0;
       _sg = prefs.getDouble('sg') ?? 0.0;
       _sb = prefs.getDouble('sb') ?? 0.0;
-      _imagePath = prefs.getString('imagePath');
+      _imagePath = stableImagePath ?? storedImagePath;
     });
-    _updateHomeWidget();
+
+    await _updateHomeWidget();
   }
 
   Future<void> _saveSetting(String key, dynamic value) async {
@@ -397,22 +428,39 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 40, maxWidth: 800, maxHeight: 800);
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 40,
+      maxWidth: 800,
+      maxHeight: 800,
+    );
+
     if (pickedFile != null) {
-      String? cropped = await _cropImage(pickedFile.path);
-      String sourcePath = cropped ?? pickedFile.path;
-      
+      final cropped = await _cropImage(pickedFile.path);
+      final sourcePath = cropped ?? pickedFile.path;
+
       try {
         final docsDir = await getApplicationDocumentsDirectory();
-        final persistentPath = '${docsDir.path}/widget_bg_saved.png';
-        
+        final persistentPath = docsDir.path + '/widget_bg_saved.png';
         final savedFile = await File(sourcePath).copy(persistentPath);
-        
-        setState(() => _imagePath = savedFile.path);
-        await _saveSetting('imagePath', savedFile.path);
+
+        // Keep the selected photo in HomeWidget shared storage.
+        // The background isolate uses this same stable path.
+        final widgetBackgroundPath = await HomeWidget.saveImage(
+          'widget_background',
+          FileImage(savedFile),
+        );
+
+        if (widgetBackgroundPath.isEmpty ||
+            !File(widgetBackgroundPath).existsSync()) {
+          throw Exception('HomeWidget background image was not saved');
+        }
+
+        setState(() => _imagePath = widgetBackgroundPath);
+        await _saveSetting('imagePath', widgetBackgroundPath);
+        await _updateHomeWidget();
       } catch (e) {
-        setState(() => _imagePath = sourcePath);
-        await _saveSetting('imagePath', sourcePath);
+        debugPrint('Background image save error: $e');
       }
     }
   }
@@ -533,7 +581,14 @@ void backgroundUpdate() async {
   int sg = (prefs.getDouble('sg') ?? 0.0).toInt();
   int sb = (prefs.getDouble('sb') ?? 0.0).toInt();
 
-  String? imagePath = prefs.getString('imagePath');
+  String? imagePath =
+      await HomeWidget.getWidgetData<String>('widget_background');
+
+  if (imagePath == null ||
+      imagePath.isEmpty ||
+      !File(imagePath).existsSync()) {
+    imagePath = prefs.getString('imagePath');
+  }
 
   try {
     await HomeWidget.renderFlutterWidget(
@@ -556,8 +611,8 @@ void backgroundUpdate() async {
 
     await HomeWidget.updateWidget(name: 'WidgetProvider', androidName: 'WidgetProvider');
   } catch (e) {
-      // Фоновий рендеринг
-    } finally {
+    debugPrint('Background widget update error: $e');
+  } finally {
       await scheduleNextBackgroundUpdate();
     }
 }
