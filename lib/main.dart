@@ -264,32 +264,16 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Keep two copies of the background:
-    // imagePath is the permanent source in app storage; widget_background
-    // is the HomeWidget shared-storage copy used for rendering.
+    // The selected photo is kept in the app's documents directory.
+    // The rendered widget image is generated from this permanent source on
+    // every update. Do not make rendering depend on widget_background.png.
     final sourceImagePath = prefs.getString('imagePath');
-    String? stableImagePath;
-
-    try {
-      final widgetImagePath =
-          await HomeWidget.getWidgetData<String>('widget_background');
-
-      if (widgetImagePath != null &&
-          widgetImagePath.isNotEmpty &&
-          File(widgetImagePath).existsSync()) {
-        stableImagePath = widgetImagePath;
-      } else if (sourceImagePath != null &&
-          sourceImagePath.isNotEmpty &&
-          File(sourceImagePath).existsSync()) {
-        stableImagePath = await HomeWidget.saveImage(
-          'widget_background',
-          FileImage(File(sourceImagePath)),
-        );
-        debugPrint('Background image restored to HomeWidget storage');
-      }
-    } catch (e) {
-      debugPrint('Background migration error: $e');
-    }
+    final stableImagePath =
+        (sourceImagePath != null &&
+                sourceImagePath.isNotEmpty &&
+                File(sourceImagePath).existsSync())
+            ? sourceImagePath
+            : null;
 
     if (!mounted) return;
 
@@ -444,21 +428,12 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         final persistentPath = docsDir.path + '/widget_bg_saved.png';
         final savedFile = await File(sourcePath).copy(persistentPath);
 
-        // Keep the original source in app storage as a permanent recovery
-        // copy. The HomeWidget copy can be recreated if it disappears.
+        // Keep one permanent source copy in app documents. The widget
+        // renderer reads this file directly on every foreground/background
+        // update, so there is no second image file that can disappear.
         await _saveSetting('imagePath', savedFile.path);
 
-        final widgetBackgroundPath = await HomeWidget.saveImage(
-          'widget_background',
-          FileImage(savedFile),
-        );
-
-        if (widgetBackgroundPath.isEmpty ||
-            !File(widgetBackgroundPath).existsSync()) {
-          throw Exception('HomeWidget background image was not saved');
-        }
-
-        setState(() => _imagePath = widgetBackgroundPath);
+        setState(() => _imagePath = savedFile.path);
         await _updateHomeWidget();
       } catch (e) {
         debugPrint('Background image save error: $e');
@@ -582,36 +557,16 @@ void backgroundUpdate() async {
   int sg = (prefs.getDouble('sg') ?? 0.0).toInt();
   int sb = (prefs.getDouble('sb') ?? 0.0).toInt();
 
-  String? imagePath =
-      await HomeWidget.getWidgetData<String>('widget_background');
-
-  // If the shared copy disappeared, recreate it from the permanent
-  // app-storage copy before rendering the next background update.
-  if (imagePath == null ||
-      imagePath.isEmpty ||
-      !File(imagePath).existsSync()) {
-    final sourceImagePath = prefs.getString('imagePath');
-
-    if (sourceImagePath != null &&
-        sourceImagePath.isNotEmpty &&
-        File(sourceImagePath).existsSync()) {
-      try {
-        imagePath = await HomeWidget.saveImage(
-          'widget_background',
-          FileImage(File(sourceImagePath)),
-        );
-
-        if (imagePath.isEmpty || !File(imagePath).existsSync()) {
-          imagePath = null;
-        } else {
-          debugPrint('Background image restored before background render');
-        }
-      } catch (e) {
-        debugPrint('Background image restore error: $e');
-        imagePath = null;
-      }
-    }
-  }
+  // Always render from the permanent app-storage source.
+  // HomeWidget's widget_image is the final rendered PNG shown by the native
+  // provider; widget_background is intentionally not used as a dependency.
+  final sourceImagePath = prefs.getString('imagePath');
+  final String? imagePath =
+      (sourceImagePath != null &&
+              sourceImagePath.isNotEmpty &&
+              File(sourceImagePath).existsSync())
+          ? sourceImagePath
+          : null;
 
   try {
     await HomeWidget.renderFlutterWidget(
