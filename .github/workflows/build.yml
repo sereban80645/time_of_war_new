@@ -45,7 +45,6 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Android launch smoke test
-        continue-on-error: true
         timeout-minutes: 10
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -61,13 +60,9 @@ jobs:
             adb shell am force-stop com.example.time_of_war_new
             adb shell monkey -p com.example.time_of_war_new 1
             sleep 8
-            if ! adb shell pidof com.example.time_of_war_new >/dev/null; then
-              echo "APP_PROCESS_NOT_RUNNING"
-              adb logcat -d -v brief | tail -n 400
-              exit 1
-            fi
-            if adb logcat -d -v brief | grep -E "FATAL EXCEPTION|Process: com.example.time_of_war_new" | tail -n 20; then
-              echo "ANDROID_CRASH_LOG_FOUND"
-              exit 1
-            fi
+            adb shell pidof com.example.time_of_war_new >/dev/null
+            echo "ANDROID_APP_PROCESS_RUNNING"
+            crash_log="$(adb logcat -d -v brief | grep -E 'FATAL EXCEPTION|Process: com.example.time_of_war_new' || true)"
+            test -z "$crash_log"
+            echo "ANDROID_NO_FATAL_CRASH_FOUND"
             echo "ANDROID_LAUNCH_SMOKE_TEST_PASSED"
