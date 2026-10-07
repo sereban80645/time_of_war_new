@@ -13,26 +13,52 @@ import java.io.File
 class WidgetProvider : HomeWidgetProvider() {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray, widgetData: SharedPreferences) {
         val res = context.resources
-        val layoutId = res.getIdentifier("widget_layout", "layout", "com.example.time_of_war_new")
-        val rootId = res.getIdentifier("widget_root", "id", "com.example.time_of_war_new")
-        val imageId = res.getIdentifier("widget_image", "id", "com.example.time_of_war_new")
-        val textId = res.getIdentifier("widget_text", "id", "com.example.time_of_war_new")
+        val layoutId = res.getIdentifier("widget_layout", "layout", context.packageName)
+        val rootId = res.getIdentifier("widget_root", "id", context.packageName)
+        val backgroundId = res.getIdentifier("widget_background", "id", context.packageName)
+        val imageId = res.getIdentifier("widget_image", "id", context.packageName)
 
         if (layoutId == 0) return
 
-        for (appWidgetId in appWidgetIds) {
-            val views = RemoteViews("com.example.time_of_war_new", layoutId)
+        val backgroundPath = widgetData.getString("widget_background_source_path", null)
+        val renderedPath = widgetData.getString("widget_image", null)
+            ?: widgetData.getString("filename", null)
 
-            val imagePath = widgetData.getString("widget_image", null) ?: widgetData.getString("filename", null)
-            if (imagePath != null) {
-                val file = File(imagePath)
-                if (file.exists()) {
-                    val bitmap = BitmapFactory.decodeFile(file.absolutePath)
-                    if (bitmap != null && imageId != 0) {
-                        views.setImageViewBitmap(imageId, bitmap)
-                        if (textId != 0) views.setViewVisibility(textId, android.view.View.GONE)
-                    }
-                }
+        val backgroundBitmap = backgroundPath?.let { path ->
+            val file = File(path)
+            if (file.exists()) BitmapFactory.decodeFile(file.absolutePath) else null
+        }
+
+        val renderedBitmap = renderedPath?.let { path ->
+            val file = File(path)
+            if (file.exists()) BitmapFactory.decodeFile(file.absolutePath) else null
+        }
+
+        // Never replace a valid launcher widget with an empty RemoteViews.
+        if (renderedBitmap == null && backgroundBitmap == null) return
+
+        val bgColor = widgetData.getLong("widget_background_color", 0xFF1E1E1E).toInt()
+        val opacity = widgetData.getFloat("widget_background_opacity", 0.5f)
+        val safeAlpha = (opacity.coerceIn(0f, 1f) * 255f).toInt()
+
+        for (appWidgetId in appWidgetIds) {
+            val views = RemoteViews(context.packageName, layoutId)
+
+            if (rootId != 0) {
+                views.setInt(rootId, "setBackgroundColor", bgColor)
+            }
+
+            if (backgroundBitmap != null && backgroundId != 0) {
+                views.setImageViewBitmap(backgroundId, backgroundBitmap)
+                views.setViewVisibility(backgroundId, android.view.View.VISIBLE)
+                views.setInt(backgroundId, "setImageAlpha", safeAlpha)
+            }
+
+            if (renderedBitmap != null && imageId != 0) {
+                views.setImageViewBitmap(imageId, renderedBitmap)
+                views.setViewVisibility(imageId, android.view.View.VISIBLE)
+            } else if (imageId != 0) {
+                continue
             }
 
             val intent = Intent()
@@ -47,6 +73,7 @@ class WidgetProvider : HomeWidgetProvider() {
             )
 
             if (rootId != 0) views.setOnClickPendingIntent(rootId, pendingIntent)
+            if (backgroundId != 0) views.setOnClickPendingIntent(backgroundId, pendingIntent)
             if (imageId != 0) views.setOnClickPendingIntent(imageId, pendingIntent)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)

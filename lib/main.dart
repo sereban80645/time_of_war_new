@@ -108,6 +108,7 @@ class TimeOfWarWidgetRender extends StatelessWidget {
   final Color textColor;
   final Color strokeColor;
   final String? imagePath;
+  final bool includeBackground;
 
   const TimeOfWarWidgetRender({
     Key? key,
@@ -122,6 +123,7 @@ class TimeOfWarWidgetRender extends StatelessWidget {
     required this.textColor,
     required this.strokeColor,
     this.imagePath,
+    this.includeBackground = true,
   }) : super(key: key);
 
   Widget _buildOutlinedText(String text) {
@@ -156,8 +158,8 @@ class TimeOfWarWidgetRender extends StatelessWidget {
       alignment: Alignment.center,
           decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: bgColor,
-        image: (imagePath != null && File(imagePath!).existsSync())
+        color: includeBackground ? bgColor : Colors.transparent,
+        image: includeBackground && imagePath != null && File(imagePath!).existsSync()
               ? DecorationImage(
                   image: FileImage(File(imagePath!)),
                   fit: BoxFit.fill, opacity: opacity)
@@ -264,33 +266,10 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Keep two independent permanent copies:
-    // 1) app-private documents storage;
-    // 2) HomeWidget shared widget storage.
-    // The shared copy is preferred by background rendering.
-    String? stableImagePath = prefs.getString('widgetImagePath');
-    if (stableImagePath == null ||
-        stableImagePath.isEmpty ||
-        !File(stableImagePath).existsSync()) {
-      final sourceImagePath = prefs.getString('imagePath');
-      if (sourceImagePath != null &&
-          sourceImagePath.isNotEmpty &&
-          File(sourceImagePath).existsSync()) {
-        try {
-          stableImagePath = await HomeWidget.saveImage(
-            'widget_background_permanent',
-            FileImage(File(sourceImagePath)),
-          );
-          await prefs.setString('widgetImagePath', stableImagePath);
-        } catch (e) {
-          debugPrint('Background shared-copy restore error: $e');
-          stableImagePath = sourceImagePath;
-        }
-      } else {
-        stableImagePath = null;
-      }
-    }
-
+    // The selected photo lives only in app-private Documents storage.
+    // Do not use HomeWidget.saveImage() for the source image: rendered-widget
+    // files may be replaced during later widget renders.
+    final stableImagePath = prefs.getString('imagePath');
     if (!mounted) return;
 
     setState(() {
@@ -310,9 +289,12 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       _sr = prefs.getDouble('sr') ?? 0.0;
       _sg = prefs.getDouble('sg') ?? 0.0;
       _sb = prefs.getDouble('sb') ?? 0.0;
-      _imagePath = stableImagePath;
+      _imagePath = (stableImagePath != null && File(stableImagePath).existsSync()) ? stableImagePath : null;
     });
 
+    if (stableImagePath != null && File(stableImagePath).existsSync()) {
+      await HomeWidget.saveWidgetData('widget_background_source_path', stableImagePath);
+    }
     await _updateHomeWidget();
   }
 
@@ -340,6 +322,11 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         dynamicHeight = 240.0;
       }
 
+      if (_imagePath != null && !File(_imagePath!).existsSync()) {
+        debugPrint('Background source missing; keeping previous rendered widget image.');
+        return;
+      }
+
       await HomeWidget.renderFlutterWidget(
         TimeOfWarWidgetRender(
           show2022: _show2022,
@@ -353,6 +340,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
           textColor: textColor,
           strokeColor: strokeColor,
           imagePath: _imagePath,
+          includeBackground: false,
         ),
         key: 'widget_image',
         logicalSize: const Size(800, 400),
@@ -444,18 +432,16 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         final persistentPath = docsDir.path + '/widget_bg_saved.png';
         final savedFile = await File(sourcePath).copy(persistentPath);
 
-        // Store the selected image permanently in app storage AND in
-        // HomeWidget's shared widget storage. Gallery files are never used
-        // after this point.
-        final sharedPath = await HomeWidget.saveImage(
-          'widget_background_permanent',
-          FileImage(savedFile),
-        );
+        // Store the selected image permanently in app-private storage.
+        // The gallery file is never used after this point. The native widget
+        // reads this stable path independently of HomeWidget render files.
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('imagePath', savedFile.path);
-        await prefs.setString('widgetImagePath', sharedPath);
+        await HomeWidget.saveWidgetData('widget_background_source_path', savedFile.path);
+        await HomeWidget.saveWidgetData('widget_background_opacity', _opacity);
+        await HomeWidget.saveWidgetData('widget_background_color', Color.fromRGBO(_br.toInt(), _bg.toInt(), _bb.toInt(), 1.0).value);
 
-        setState(() => _imagePath = sharedPath);
+        setState(() => _imagePath = savedFile.path);
         await _updateHomeWidget();
       } catch (e) {
         debugPrint('Background image save error: $e');
@@ -581,28 +567,16 @@ void backgroundUpdate() async {
 
   // Prefer the permanent copy in HomeWidget shared storage. If it was
   // removed for any reason, rebuild it from the second permanent app copy.
-  String? imagePath = prefs.getString('widgetImagePath');
-  if (imagePath == null ||
-      imagePath.isEmpty ||
-      !File(imagePath).existsSync()) {
-    final sourceImagePath = prefs.getString('imagePath');
-    if (sourceImagePath != null &&
-        sourceImagePath.isNotEmpty &&
-        File(sourceImagePath).existsSync()) {
-      try {
-        imagePath = await HomeWidget.saveImage(
-          'widget_background_permanent',
-          FileImage(File(sourceImagePath)),
-        );
-        await prefs.setString('widgetImagePath', imagePath);
-      } catch (e) {
-        debugPrint('Background shared-copy restore error: $e');
-        imagePath = sourceImagePath;
-      }
-    } else {
-      imagePath = null;
-    }
+  final String? imagePath = prefs.getString('imagePath');
+  if (imagePath != null && !File(imagePath).existsSync()) {
+    debugPrint('Background source missing in app storage; skipping widget render.');
+    await scheduleNextBackgroundUpdate();
+    return;
   }
+
+  await HomeWidget.saveWidgetData('widget_background_source_path', imagePath);
+  await HomeWidget.saveWidgetData('widget_background_opacity', opacity);
+  await HomeWidget.saveWidgetData('widget_background_color', Color.fromRGBO(br, bg, bb, 1.0).value);
 
   try {
     await HomeWidget.renderFlutterWidget(
@@ -618,6 +592,7 @@ void backgroundUpdate() async {
         textColor: Color.fromRGBO(tr, tg, tb, 1.0),
         strokeColor: Color.fromRGBO(sr, sg, sb, 1.0),
         imagePath: imagePath,
+        includeBackground: false,
       ),
       key: 'widget_image',
       logicalSize: const Size(800, 400),
