@@ -37,8 +37,18 @@ class WidgetProvider : HomeWidgetProvider() {
         // Never replace a valid launcher widget with an empty RemoteViews.
         if (renderedBitmap == null && backgroundBitmap == null) return
 
-        val bgColor = widgetData.getLong("widget_background_color", 0xFF1E1E1E).toInt()
-        val opacity = widgetData.getFloat("widget_background_opacity", 0.5f)
+        val bgColor = try {
+            widgetData.getInt("widget_background_color", 0xFF1E1E1E.toInt())
+        } catch (_: ClassCastException) {
+            widgetData.getString("widget_background_color", null)?.toLongOrNull()?.toInt()
+                ?: 0xFF1E1E1E.toInt()
+        }
+        val opacity = try {
+            widgetData.getFloat("widget_background_opacity", 0.5f)
+        } catch (_: ClassCastException) {
+            widgetData.getString("widget_background_opacity", null)?.toFloatOrNull()
+                ?: 0.5f
+        }
         val safeAlpha = (opacity.coerceIn(0f, 1f) * 255f).toInt()
 
         for (appWidgetId in appWidgetIds) {
@@ -51,7 +61,7 @@ class WidgetProvider : HomeWidgetProvider() {
             if (backgroundBitmap != null && backgroundId != 0) {
                 views.setImageViewBitmap(backgroundId, backgroundBitmap)
                 views.setViewVisibility(backgroundId, android.view.View.VISIBLE)
-                views.setInt(backgroundId, "setImageAlpha", safeAlpha)
+                views.setImageViewAlpha(backgroundId, opacity.coerceIn(0f, 1f))
             }
 
             if (renderedBitmap != null && imageId != 0) {
