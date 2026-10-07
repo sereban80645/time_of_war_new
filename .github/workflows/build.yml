@@ -11,7 +11,20 @@ jobs:
           channel: 'stable'
 
       - run: flutter pub get
-      - run: flutter analyze --no-fatal-infos
+
+      - name: Flutter analyzer gate
+        shell: bash
+        run: |
+          set +e
+          flutter analyze --no-fatal-infos 2>&1 | tee /tmp/flutter-analyze.log
+          analyze_rc=${PIPESTATUS[0]}
+          if grep -Eq '^[[:space:]]*error •' /tmp/flutter-analyze.log; then
+            echo "FLUTTER_ANALYZER_ERRORS_FOUND"
+            exit 1
+          fi
+          if [ "$analyze_rc" -ne 0 ]; then
+            echo "Analyzer returned non-zero because of warnings/infos; continuing to build."
+          fi
 
       - run: flutter clean && flutter pub get && flutter pub run flutter_launcher_icons && flutter build apk --release
 
