@@ -71,14 +71,30 @@ Future<void> scheduleNextBackgroundUpdate() async {
   // Наступне оновлення: рівно о 01 хвилині наступної години
   DateTime nextUpdate = DateTime(now.year, now.month, now.day, now.hour).add(const Duration(hours: 1, minutes: 1));
   
-  await AndroidAlarmManager.oneShotAt(
-    nextUpdate,
-    0,
-    backgroundUpdate,
-    exact: true,
-    wakeup: true,
-    allowWhileIdle: true,
-  );
+  try {
+    await AndroidAlarmManager.oneShotAt(
+      nextUpdate,
+      0,
+      backgroundUpdate,
+      exact: true,
+      wakeup: true,
+      allowWhileIdle: true,
+    );
+  } catch (e) {
+    debugPrint('Exact alarm unavailable, using inexact alarm: $e');
+    try {
+      await AndroidAlarmManager.oneShotAt(
+        nextUpdate,
+        0,
+        backgroundUpdate,
+        exact: false,
+        wakeup: true,
+        allowWhileIdle: true,
+      );
+    } catch (fallbackError) {
+      debugPrint('Background alarm scheduling failed: $fallbackError');
+    }
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -340,7 +356,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
           textColor: textColor,
           strokeColor: strokeColor,
           imagePath: _imagePath,
-          includeBackground: false,
+          includeBackground: true,
         ),
         key: 'widget_image',
         logicalSize: const Size(800, 400),
@@ -536,6 +552,7 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
 
 
 @pragma('vm:entry-point')
+@pragma('vm:entry-point')
 void backgroundUpdate() async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
@@ -592,7 +609,7 @@ void backgroundUpdate() async {
         textColor: Color.fromRGBO(tr, tg, tb, 1.0),
         strokeColor: Color.fromRGBO(sr, sg, sb, 1.0),
         imagePath: imagePath,
-        includeBackground: false,
+        includeBackground: true,
       ),
       key: 'widget_image',
       logicalSize: const Size(800, 400),
