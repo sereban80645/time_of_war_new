@@ -343,6 +343,26 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
         return;
       }
 
+      await Future.wait([
+        HomeWidget.saveWidgetData('show2022', _show2022),
+        HomeWidget.saveWidgetData('show2014', _show2014),
+        HomeWidget.saveWidgetData('showHour', _showHour),
+        HomeWidget.saveWidgetData('showDaysOnly', _showDaysOnly),
+        HomeWidget.saveWidgetData('fontSize', _fontSize),
+        HomeWidget.saveWidgetData('strokeWidth', _strokeWidth),
+        HomeWidget.saveWidgetData('opacity', _opacity),
+        HomeWidget.saveWidgetData('br', _br),
+        HomeWidget.saveWidgetData('bg', _bg),
+        HomeWidget.saveWidgetData('bb', _bb),
+        HomeWidget.saveWidgetData('tr', _tr),
+        HomeWidget.saveWidgetData('tg', _tg),
+        HomeWidget.saveWidgetData('tb', _tb),
+        HomeWidget.saveWidgetData('sr', _sr),
+        HomeWidget.saveWidgetData('sg', _sg),
+        HomeWidget.saveWidgetData('sb', _sb),
+        HomeWidget.saveWidgetData('widget_background_source_path', _imagePath),
+      ]);
+
       await HomeWidget.renderFlutterWidget(
         TimeOfWarWidgetRender(
           show2022: _show2022,
