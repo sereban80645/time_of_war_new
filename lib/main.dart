@@ -344,22 +344,24 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
       }
 
       await Future.wait([
-        HomeWidget.saveWidgetData('show2022', _show2022),
-        HomeWidget.saveWidgetData('show2014', _show2014),
-        HomeWidget.saveWidgetData('showHour', _showHour),
-        HomeWidget.saveWidgetData('showDaysOnly', _showDaysOnly),
-        HomeWidget.saveWidgetData('fontSize', _fontSize),
-        HomeWidget.saveWidgetData('strokeWidth', _strokeWidth),
-        HomeWidget.saveWidgetData('opacity', _opacity),
-        HomeWidget.saveWidgetData('br', _br),
-        HomeWidget.saveWidgetData('bg', _bg),
-        HomeWidget.saveWidgetData('bb', _bb),
-        HomeWidget.saveWidgetData('tr', _tr),
-        HomeWidget.saveWidgetData('tg', _tg),
-        HomeWidget.saveWidgetData('tb', _tb),
-        HomeWidget.saveWidgetData('sr', _sr),
-        HomeWidget.saveWidgetData('sg', _sg),
-        HomeWidget.saveWidgetData('sb', _sb),
+        // Native provider reads these as strings to avoid SharedPreferences
+        // numeric-type differences between Flutter and Kotlin.
+        HomeWidget.saveWidgetData('native_show2022', _show2022.toString()),
+        HomeWidget.saveWidgetData('native_show2014', _show2014.toString()),
+        HomeWidget.saveWidgetData('native_showHour', _showHour.toString()),
+        HomeWidget.saveWidgetData('native_showDaysOnly', _showDaysOnly.toString()),
+        HomeWidget.saveWidgetData('native_fontSize', _fontSize.toString()),
+        HomeWidget.saveWidgetData('native_strokeWidth', _strokeWidth.toString()),
+        HomeWidget.saveWidgetData('native_opacity', _opacity.toString()),
+        HomeWidget.saveWidgetData('native_br', _br.toInt().toString()),
+        HomeWidget.saveWidgetData('native_bg', _bg.toInt().toString()),
+        HomeWidget.saveWidgetData('native_bb', _bb.toInt().toString()),
+        HomeWidget.saveWidgetData('native_tr', _tr.toInt().toString()),
+        HomeWidget.saveWidgetData('native_tg', _tg.toInt().toString()),
+        HomeWidget.saveWidgetData('native_tb', _tb.toInt().toString()),
+        HomeWidget.saveWidgetData('native_sr', _sr.toInt().toString()),
+        HomeWidget.saveWidgetData('native_sg', _sg.toInt().toString()),
+        HomeWidget.saveWidgetData('native_sb', _sb.toInt().toString()),
         HomeWidget.saveWidgetData('widget_background_source_path', _imagePath),
       ]);
 
