@@ -64,9 +64,15 @@ class WidgetProvider : HomeWidgetProvider() {
             val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
             val opacity = float(data, "native_opacity", 0.5f).coerceIn(0f, 1f)
-            canvas.drawColor(Color.argb((opacity * 255f).toInt(), int(data, "native_br", 30), int(data, "native_bg", 30), int(data, "native_bb", 30)))
+            val backgroundColor = Color.rgb(
+                int(data, "native_br", 30).coerceIn(0, 255),
+                int(data, "native_bg", 30).coerceIn(0, 255),
+                int(data, "native_bb", 30).coerceIn(0, 255)
+            )
 
+            // Do not prefill the canvas with an opaque color: launcher wallpaper must show through.
             val imagePath = data.getString("widget_background_source_path", null)
+            var imageDrawn = false
             if (!imagePath.isNullOrBlank()) {
                 val file = File(imagePath)
                 if (file.exists()) {
@@ -84,9 +90,20 @@ class WidgetProvider : HomeWidgetProvider() {
                             android.graphics.Rect(0, top, source.width, top + cropHeight)
                         }
                         canvas.drawBitmap(source, srcRect, android.graphics.Rect(0, 0, WIDTH, HEIGHT), paint)
+                        imageDrawn = true
                         source.recycle()
                     }
                 }
+            }
+            if (!imageDrawn) {
+                canvas.drawColor(
+                    Color.argb(
+                        (opacity * 255f).toInt(),
+                        Color.red(backgroundColor),
+                        Color.green(backgroundColor),
+                        Color.blue(backgroundColor)
+                    )
+                )
             }
 
             val textColor = Color.rgb(int(data, "native_tr", 255), int(data, "native_tg", 255), int(data, "native_tb", 255))
