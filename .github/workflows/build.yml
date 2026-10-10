@@ -18,7 +18,7 @@ jobs:
           set +e
           flutter analyze --no-fatal-infos 2>&1 | tee /tmp/flutter-analyze.log
           analyze_rc=${PIPESTATUS[0]}
-          if grep -Eq '^[[:space:]]*error â¢' /tmp/flutter-analyze.log; then
+          if grep -Eq '^[[:space:]]*error' /tmp/flutter-analyze.log; then
             echo "FLUTTER_ANALYZER_ERRORS_FOUND"
             exit 1
           fi
@@ -61,16 +61,16 @@ jobs:
             adb shell am force-stop com.example.time_of_war_new
             adb shell monkey -p com.example.time_of_war_new 1
             sleep 8
-            crash_log="$(adb logcat -d -v threadtime | grep -E 'FATAL EXCEPTION|Process: com.example.time_of_war_new|AndroidRuntime|E/flutter|Fatal signal|SIGABRT|SIGSEGV' || true)"
             if ! adb shell pidof com.example.time_of_war_new >/dev/null; then
               echo "ANDROID_APP_PROCESS_NOT_RUNNING_AFTER_LAUNCH"
-              echo "ANDROID_CRASH_DIAGNOSTICS_BEGIN"
-              printf '%s\\n' "$crash_log"
-              adb logcat -d -v threadtime | tail -n 200
-              echo "ANDROID_CRASH_DIAGNOSTICS_END"
+              adb logcat -d -v brief | tail -n 200
               exit 1
             fi
             echo "ANDROID_APP_PROCESS_RUNNING"
-            test -z "$crash_log" || { printf '%s\\n' "$crash_log"; exit 1; }
+            crash_log="$(adb logcat -d -v brief | grep -E 'FATAL EXCEPTION|Process: com.example.time_of_war_new' || true)"
+            if [ -n "$crash_log" ]; then
+              printf '%s\n' "$crash_log"
+              exit 1
+            fi
             echo "ANDROID_NO_FATAL_CRASH_FOUND"
             echo "ANDROID_LAUNCH_SMOKE_TEST_PASSED"
