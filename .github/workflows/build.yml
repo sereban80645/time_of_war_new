@@ -5,13 +5,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
-
+          channel: stable
       - run: flutter pub get
-
       - name: Flutter analyzer gate
         shell: bash
         run: |
@@ -25,10 +22,8 @@ jobs:
           if [ "$analyze_rc" -ne 0 ]; then
             echo "Analyzer returned non-zero because of warnings/infos; continuing to build."
           fi
-
       - name: Build release APK
         run: flutter clean && flutter pub get && flutter pub run flutter_launcher_icons && flutter build apk --release
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -37,13 +32,11 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           archive: false
-
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-
       - name: Android launch smoke test
         timeout-minutes: 10
         uses: reactivecircus/android-emulator-runner@v2
@@ -59,11 +52,20 @@ jobs:
             adb logcat -c
             adb install -r build/app/outputs/flutter-apk/app-release.apk
             adb shell am force-stop com.example.time_of_war_new
-            adb shell monkey -p com.example.time_of_war_new 1
-            sleep 8
-            adb shell pidof com.example.time_of_war_new >/dev/null || { echo "ANDROID_APP_PROCESS_NOT_RUNNING_AFTER_LAUNCH"; adb logcat -d -v brief | tail -n 200; exit 1; }
-            echo "ANDROID_APP_PROCESS_RUNNING"
+            adb shell am start -W -n com.example.time_of_war_new/.MainActivity
+            sleep 10
+            pid="$(adb shell pidof com.example.time_of_war_new || true)"
+            if [ -z "$pid" ]; then
+              echo "ANDROID_APP_PROCESS_NOT_RUNNING_AFTER_EXPLICIT_ACTIVITY_START"
+              adb shell dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity|com.example.time_of_war_new' || true
+              adb logcat -d -v brief | grep -E 'FATAL EXCEPTION|AndroidRuntime|com.example.time_of_war_new|Flutter' | tail -n 200 || true
+              exit 1
+            fi
+            echo "ANDROID_APP_PROCESS_RUNNING: $pid"
             crash_log="$(adb logcat -d -v brief | grep -E 'FATAL EXCEPTION|Process: com.example.time_of_war_new' || true)"
-            [ -z "$crash_log" ] || { printf '%s\n' "$crash_log"; exit 1; }
+            if [ -n "$crash_log" ]; then
+              printf '%s\n' "$crash_log"
+              exit 1
+            fi
             echo "ANDROID_NO_FATAL_CRASH_FOUND"
             echo "ANDROID_LAUNCH_SMOKE_TEST_PASSED"
