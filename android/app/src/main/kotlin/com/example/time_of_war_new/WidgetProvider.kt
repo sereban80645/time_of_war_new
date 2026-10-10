@@ -32,7 +32,7 @@ class WidgetProvider : HomeWidgetProvider() {
                 val minutes = now.get(Calendar.MINUTE) - start.get(Calendar.MINUTE)
                 if (minutes < 0) hours--
                 if (hours < 0) hours += 24
-                return if (showHour) "${totalDays}Ð´. ${hours}Ð³." else "${totalDays}Ð´."
+                return if (showHour) "${totalDays}р. ${hours}г." else "${totalDays}р."
             }
             var years = now.get(Calendar.YEAR) - start.get(Calendar.YEAR)
             var months = now.get(Calendar.MONTH) - start.get(Calendar.MONTH)
@@ -50,7 +50,7 @@ class WidgetProvider : HomeWidgetProvider() {
                 days += previousMonth.get(Calendar.DAY_OF_MONTH)
             }
             if (months < 0) { years--; months += 12 }
-            return "${years}Ñ. ${months}Ð¼ÑÑ. ${days}Ð´. ${hours}Ð³."
+            return "${years}р. ${months}міс. ${days}д. ${hours}г."
         }
 
         private fun startCalendar(year: Int, month: Int, day: Int, hour: Int, minute: Int) =
@@ -116,8 +116,8 @@ class WidgetProvider : HomeWidgetProvider() {
             val daysOnly = bool(data, "native_showDaysOnly", false)
             val now = Calendar.getInstance()
             val rows = mutableListOf<Pair<String, String>>()
-            if (show2022) rows.add("ÐÐ¾Ð²Ð½Ð¾Ð¼Ð°ÑÑÑÐ°Ð±Ð½Ð° Ð²ÑÐ¹Ð½Ð°:" to timeText(startCalendar(2022, 2, 24, 2, 40), now, daysOnly, showHour))
-            if (show2014) rows.add("ÐÑÐ¹Ð½Ð° Ð· 2014 ÑÐ¾ÐºÑ:" to timeText(startCalendar(2014, 2, 20, 12, 0), now, daysOnly, showHour))
+            if (show2022) rows.add("Повномасштабна війна:" to timeText(startCalendar(2022, 2, 24, 2, 40), now, daysOnly, showHour))
+            if (show2014) rows.add("Війна з 2014 року:" to timeText(startCalendar(2014, 2, 20, 12, 0), now, daysOnly, showHour))
 
             val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = Color.argb(180, 255, 255, 255); textSize = fontSize * 0.5f
