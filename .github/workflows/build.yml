@@ -61,16 +61,9 @@ jobs:
             adb shell am force-stop com.example.time_of_war_new
             adb shell monkey -p com.example.time_of_war_new 1
             sleep 8
-            if ! adb shell pidof com.example.time_of_war_new >/dev/null; then
-              echo "ANDROID_APP_PROCESS_NOT_RUNNING_AFTER_LAUNCH"
-              adb logcat -d -v brief | tail -n 200
-              exit 1
-            fi
+            adb shell pidof com.example.time_of_war_new >/dev/null || { echo "ANDROID_APP_PROCESS_NOT_RUNNING_AFTER_LAUNCH"; adb logcat -d -v brief | tail -n 200; exit 1; }
             echo "ANDROID_APP_PROCESS_RUNNING"
             crash_log="$(adb logcat -d -v brief | grep -E 'FATAL EXCEPTION|Process: com.example.time_of_war_new' || true)"
-            if [ -n "$crash_log" ]; then
-              printf '%s\n' "$crash_log"
-              exit 1
-            fi
+            [ -z "$crash_log" ] || { printf '%s\n' "$crash_log"; exit 1; }
             echo "ANDROID_NO_FATAL_CRASH_FOUND"
             echo "ANDROID_LAUNCH_SMOKE_TEST_PASSED"
