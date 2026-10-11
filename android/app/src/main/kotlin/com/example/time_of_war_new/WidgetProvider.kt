@@ -70,7 +70,15 @@ class WidgetProvider : HomeWidgetProvider() {
                 int(data, "native_bb", 30).coerceIn(0, 255)
             )
 
-            // Do not prefill the canvas with an opaque color: launcher wallpaper must show through.
+            // Draw the base color first, then composite the optional background image over it.
+            canvas.drawColor(
+                Color.argb(
+                    (opacity * 255f).toInt(),
+                    Color.red(backgroundColor),
+                    Color.green(backgroundColor),
+                    Color.blue(backgroundColor)
+                )
+            )
             val imagePath = data.getString("widget_background_source_path", null)
             var imageDrawn = false
             if (!imagePath.isNullOrBlank()) {
@@ -94,16 +102,6 @@ class WidgetProvider : HomeWidgetProvider() {
                         source.recycle()
                     }
                 }
-            }
-            if (!imageDrawn) {
-                canvas.drawColor(
-                    Color.argb(
-                        (opacity * 255f).toInt(),
-                        Color.red(backgroundColor),
-                        Color.green(backgroundColor),
-                        Color.blue(backgroundColor)
-                    )
-                )
             }
 
             val textColor = Color.rgb(int(data, "native_tr", 255), int(data, "native_tg", 255), int(data, "native_tb", 255))
