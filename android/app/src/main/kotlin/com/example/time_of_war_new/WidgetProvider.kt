@@ -50,7 +50,7 @@ class WidgetProvider : HomeWidgetProvider() {
                 days += previousMonth.get(Calendar.DAY_OF_MONTH)
             }
             if (months < 0) { years--; months += 12 }
-            return "${years}р. ${months}міс. ${days}д. ${hours}г."
+            return if (showHour) "${years}р. ${months}міс. ${days}д. ${hours}г." else "${years}р. ${months}міс. ${days}д."
         }
 
         private fun startCalendar(year: Int, month: Int, day: Int, hour: Int, minute: Int) =
