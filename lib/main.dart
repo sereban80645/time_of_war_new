@@ -32,7 +32,7 @@ void callbackDispatcher() {
 String getGlobalAccurateTime(DateTime startDate, bool showDaysOnly, bool showHour) {
   final n = DateTime.now();
   if (showDaysOnly) {
-    int totalDays = n.difference(startDate).inDays;
+    int totalDays = n.difference(startDate).inDays + 1;
     int hours = n.hour - startDate.hour;
     int minutes = n.minute - startDate.minute;
     if (minutes < 0) hours--;
