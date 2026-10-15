@@ -27,7 +27,7 @@ class WidgetProvider : HomeWidgetProvider() {
 
         private fun timeText(start: Calendar, now: Calendar, daysOnly: Boolean, showHour: Boolean): String {
             if (daysOnly) {
-                val totalDays = ((now.timeInMillis - start.timeInMillis) / 86_400_000L).toInt()
+                val totalDays = ((now.timeInMillis - start.timeInMillis) / 86_400_000L).toInt() + 1
                 var hours = now.get(Calendar.HOUR_OF_DAY) - start.get(Calendar.HOUR_OF_DAY)
                 val minutes = now.get(Calendar.MINUTE) - start.get(Calendar.MINUTE)
                 if (minutes < 0) hours--
