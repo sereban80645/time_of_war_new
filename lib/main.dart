@@ -8,24 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:workmanager/workmanager.dart';
-
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    try {
-      WidgetsFlutterBinding.ensureInitialized();
-      DartPluginRegistrant.ensureInitialized();
-      // Re-render through the native provider; it calculates the current time itself.
-      await HomeWidget.updateWidget(name: 'WidgetProvider', androidName: 'WidgetProvider');
-      return true;
-    } catch (e) {
-      debugPrint('Periodic widget refresh failed: $e');
-      return false;
-    }
-  });
-}
-
 
 
 String getGlobalAccurateTime(DateTime startDate, bool showDaysOnly, bool showHour) {
@@ -59,40 +41,57 @@ String getGlobalAccurateTime(DateTime startDate, bool showDaysOnly, bool showHou
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AndroidAlarmManager.initialize();
-  try {
-    await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
-    // Backup refresh in case the one-shot alarm is lost or its callback fails.
-    await Workmanager().registerPeriodicTask(
-      'timeOfWarWidgetRefresh',
-      'timeOfWarWidgetRefresh',
-      frequency: const Duration(minutes: 15),
-      existingWorkPolicy: ExistingWorkPolicy.keep,
-    );
-  } catch (e) {
-    debugPrint('Workmanager initialization/scheduling failed: $e');
-  }
-
   runApp(const MyApp());
   await scheduleNextBackgroundUpdate();
 }
 
 Future<void> scheduleNextBackgroundUpdate() async {
-  final now = DateTime.now();
-  // Наступне оновлення: рівно о 01 хвилині наступної години
-  DateTime nextUpdate = DateTime(now.year, now.month, now.day, now.hour).add(const Duration(hours: 1, minutes: 1));
-  
   try {
-    await AndroidAlarmManager.oneShotAt(
-      nextUpdate,
-      0,
-      backgroundUpdate,
-      exact: true,
-      wakeup: true,
-      allowWhileIdle: true,
-    );
-  } catch (e) {
-    debugPrint('Exact alarm unavailable, using inexact alarm: $e');
+    // Replace the previous alarm with one aligned to the next visible counter change.
+    await AndroidAlarmManager.cancel(0);
+    final prefs = await SharedPreferences.getInstance();
+    final show2022 = prefs.getBool('show2022') ?? true;
+    final show2014 = prefs.getBool('show2014') ?? false;
+    final showHour = prefs.getBool('showHour') ?? true;
+    final now = DateTime.now();
+    final candidates = <DateTime>[];
+
+    void addNextChange(DateTime start) {
+      if (showHour) {
+        var next = DateTime(now.year, now.month, now.day, now.hour, start.minute);
+        if (!next.isAfter(now)) {
+          next = DateTime(now.year, now.month, now.day, now.hour + 1, start.minute);
+        }
+        candidates.add(next);
+      } else {
+        var next = DateTime(now.year, now.month, now.day, start.hour, start.minute);
+        if (!next.isAfter(now)) {
+          next = DateTime(now.year, now.month, now.day + 1, start.hour, start.minute);
+        }
+        candidates.add(next);
+      }
+    }
+
+    if (show2022) addNextChange(DateTime(2022, 2, 24, 2, 40));
+    if (show2014) addNextChange(DateTime(2014, 2, 20, 12, 0));
+    if (candidates.isEmpty) {
+      debugPrint('No visible counters enabled; background refresh not scheduled.');
+      return;
+    }
+
+    candidates.sort((a, b) => a.compareTo(b));
+    final nextUpdate = candidates.first;
     try {
+      await AndroidAlarmManager.oneShotAt(
+        nextUpdate,
+        0,
+        backgroundUpdate,
+        exact: true,
+        wakeup: true,
+        allowWhileIdle: true,
+      );
+    } catch (e) {
+      debugPrint('Exact alarm unavailable, using inexact alarm: $e');
       await AndroidAlarmManager.oneShotAt(
         nextUpdate,
         0,
@@ -101,9 +100,10 @@ Future<void> scheduleNextBackgroundUpdate() async {
         wakeup: true,
         allowWhileIdle: true,
       );
-    } catch (fallbackError) {
-      debugPrint('Background alarm scheduling failed: $fallbackError');
     }
+    debugPrint('Next widget refresh scheduled for $nextUpdate');
+  } catch (e) {
+    debugPrint('Background alarm scheduling failed: $e');
   }
 }
 
@@ -329,7 +329,10 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
     if (value is bool) await prefs.setBool(key, value);
     if (value is double) await prefs.setDouble(key, value);
     if (value is String) await prefs.setString(key, value);
-    _debouncedUpdate(); 
+    _debouncedUpdate();
+    if (key == 'show2022' || key == 'show2014' || key == 'showHour') {
+      await scheduleNextBackgroundUpdate();
+    }
   }
 
   Future<void> _updateHomeWidget() async {
