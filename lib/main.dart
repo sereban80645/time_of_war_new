@@ -13,17 +13,16 @@ import 'package:workmanager/workmanager.dart';
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
-    final now = DateTime.now();
-    
-    // Жорсткий розрахунок з точних дат
-    final prefs = await SharedPreferences.getInstance();
-    bool dO = prefs.getBool('showDaysOnly') ?? false;
-    bool sh = prefs.getBool('showHour') ?? true;
-    await HomeWidget.saveWidgetData('text_2022', getGlobalAccurateTime(DateTime(2022, 2, 24, 2, 40), dO, sh));
-    await HomeWidget.saveWidgetData('text_2014', getGlobalAccurateTime(DateTime(2014, 2, 20, 12, 0), dO, sh));
-    
-    await HomeWidget.updateWidget(name: 'TimeOfWarWidgetProvider', iOSName: 'TimeOfWarWidget');
-    return Future.value(true);
+    try {
+      WidgetsFlutterBinding.ensureInitialized();
+      DartPluginRegistrant.ensureInitialized();
+      // Re-render through the native provider; it calculates the current time itself.
+      await HomeWidget.updateWidget(name: 'WidgetProvider', androidName: 'WidgetProvider');
+      return true;
+    } catch (e) {
+      debugPrint('Periodic widget refresh failed: $e');
+      return false;
+    }
   });
 }
 
@@ -61,11 +60,20 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AndroidAlarmManager.initialize();
   try {
-    Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
-  } catch (e) {}
-  
+    await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+    // Backup refresh in case the one-shot alarm is lost or its callback fails.
+    await Workmanager().registerPeriodicTask(
+      'timeOfWarWidgetRefresh',
+      'timeOfWarWidgetRefresh',
+      frequency: const Duration(minutes: 15),
+      existingWorkPolicy: ExistingWorkPolicy.keep,
+    );
+  } catch (e) {
+    debugPrint('Workmanager initialization/scheduling failed: $e');
+  }
+
   runApp(const MyApp());
-  scheduleNextBackgroundUpdate();
+  await scheduleNextBackgroundUpdate();
 }
 
 Future<void> scheduleNextBackgroundUpdate() async {
@@ -576,50 +584,47 @@ class _TimeOfWarScreenState extends State<TimeOfWarScreen> {
 
 
 @pragma('vm:entry-point')
-@pragma('vm:entry-point')
 void backgroundUpdate() async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
-  final prefs = await SharedPreferences.getInstance();
-
-  bool show2022 = prefs.getBool('show2022') ?? true;
-  bool show2014 = prefs.getBool('show2014') ?? true;
-  bool showDaysOnly = prefs.getBool('showDaysOnly') ?? false;
-  bool showHour = prefs.getBool('showHour') ?? true;
-
-  String time2022 = getGlobalAccurateTime(DateTime(2022, 2, 24, 2, 40), showDaysOnly, showHour);
-  String time2014 = getGlobalAccurateTime(DateTime(2014, 2, 20, 12, 0), showDaysOnly, showHour);
-
-  double fontSize = prefs.getDouble('fontSize') ?? 14.0;
-  double strokeWidth = prefs.getDouble('strokeWidth') ?? 2.0;
-  double opacity = prefs.getDouble('opacity') ?? 0.5;
-
-  int br = (prefs.getDouble('br') ?? 30.0).toInt();
-  int bg = (prefs.getDouble('bg') ?? 30.0).toInt();
-  int bb = (prefs.getDouble('bb') ?? 30.0).toInt();
-
-  int tr = (prefs.getDouble('tr') ?? 255.0).toInt();
-  int tg = (prefs.getDouble('tg') ?? 255.0).toInt();
-  int tb = (prefs.getDouble('tb') ?? 255.0).toInt();
-
-  int sr = (prefs.getDouble('sr') ?? 0.0).toInt();
-  int sg = (prefs.getDouble('sg') ?? 0.0).toInt();
-  int sb = (prefs.getDouble('sb') ?? 0.0).toInt();
-
-  // Prefer the permanent copy in HomeWidget shared storage. If it was
-  // removed for any reason, rebuild it from the second permanent app copy.
-  final String? imagePath = prefs.getString('imagePath');
-  if (imagePath != null && !File(imagePath).existsSync()) {
-    debugPrint('Background source missing in app storage; skipping widget render.');
-    await scheduleNextBackgroundUpdate();
-    return;
-  }
-
-  await HomeWidget.saveWidgetData('widget_background_source_path', imagePath);
-  await HomeWidget.saveWidgetData('widget_background_opacity', opacity);
-  await HomeWidget.saveWidgetData('widget_background_color', Color.fromRGBO(br, bg, bb, 1.0).value);
 
   try {
+    final prefs = await SharedPreferences.getInstance();
+
+    bool show2022 = prefs.getBool('show2022') ?? true;
+    bool show2014 = prefs.getBool('show2014') ?? true;
+    bool showDaysOnly = prefs.getBool('showDaysOnly') ?? false;
+    bool showHour = prefs.getBool('showHour') ?? true;
+
+    String time2022 = getGlobalAccurateTime(DateTime(2022, 2, 24, 2, 40), showDaysOnly, showHour);
+    String time2014 = getGlobalAccurateTime(DateTime(2014, 2, 20, 12, 0), showDaysOnly, showHour);
+
+    double fontSize = prefs.getDouble('fontSize') ?? 14.0;
+    double strokeWidth = prefs.getDouble('strokeWidth') ?? 2.0;
+    double opacity = prefs.getDouble('opacity') ?? 0.5;
+
+    int br = (prefs.getDouble('br') ?? 30.0).toInt();
+    int bg = (prefs.getDouble('bg') ?? 30.0).toInt();
+    int bb = (prefs.getDouble('bb') ?? 30.0).toInt();
+
+    int tr = (prefs.getDouble('tr') ?? 255.0).toInt();
+    int tg = (prefs.getDouble('tg') ?? 255.0).toInt();
+    int tb = (prefs.getDouble('tb') ?? 255.0).toInt();
+
+    int sr = (prefs.getDouble('sr') ?? 0.0).toInt();
+    int sg = (prefs.getDouble('sg') ?? 0.0).toInt();
+    int sb = (prefs.getDouble('sb') ?? 0.0).toInt();
+
+    final String? imagePath = prefs.getString('imagePath');
+    if (imagePath != null && !File(imagePath).existsSync()) {
+      debugPrint('Background source missing in app storage; skipping widget render.');
+      return;
+    }
+
+    await HomeWidget.saveWidgetData('widget_background_source_path', imagePath);
+    await HomeWidget.saveWidgetData('widget_background_opacity', opacity);
+    await HomeWidget.saveWidgetData('widget_background_color', Color.fromRGBO(br, bg, bb, 1.0).value);
+
     await HomeWidget.renderFlutterWidget(
       TimeOfWarWidgetRender(
         show2022: show2022,
@@ -640,11 +645,12 @@ void backgroundUpdate() async {
     );
 
     await HomeWidget.updateWidget(name: 'WidgetProvider', androidName: 'WidgetProvider');
-  } catch (e) {
-    debugPrint('Background widget update error: $e');
+  } catch (e, stackTrace) {
+    debugPrint('Background widget update error: $e\n$stackTrace');
   } finally {
-      await scheduleNextBackgroundUpdate();
-    }
+    // Always queue the next hourly refresh, even if rendering fails.
+    await scheduleNextBackgroundUpdate();
+  }
 }
 
 // Force trigger build
