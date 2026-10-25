@@ -11,7 +11,7 @@
 
     <application
         tools:replace="android:name"
-        android:label="Time_of_War New"
+        android:label="Time_of_waR"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
