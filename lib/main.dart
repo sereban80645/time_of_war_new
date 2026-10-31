@@ -10,31 +10,46 @@ import 'package:home_widget/home_widget.dart';
 import 'package:image_picker/image_picker.dart';
 
 
-String getGlobalAccurateTime(DateTime startDate, bool showDaysOnly, bool showHour) {
-  final n = DateTime.now();
+String formatElapsedTime(DateTime startDate, DateTime now, bool showDaysOnly, bool showHour) {
   if (showDaysOnly) {
-    int totalDays = n.difference(startDate).inDays + 1;
-    int hours = n.hour - startDate.hour;
-    int minutes = n.minute - startDate.minute;
+    // Compare local calendar dates via UTC date-only values so DST days are
+    // counted as calendar days, not as fixed 24-hour durations.
+    final startDateOnly = DateTime.utc(startDate.year, startDate.month, startDate.day);
+    final nowDateOnly = DateTime.utc(now.year, now.month, now.day);
+    final calendarDays = nowDateOnly.difference(startDateOnly).inDays;
+    final reachedDailyAnniversary =
+        now.hour > startDate.hour ||
+        (now.hour == startDate.hour && now.minute >= startDate.minute);
+    final totalDays = calendarDays + (reachedDailyAnniversary ? 1 : 0);
+
+    var hours = now.hour - startDate.hour;
+    final minutes = now.minute - startDate.minute;
     if (minutes < 0) hours--;
     if (hours < 0) hours += 24;
-    String out = "${totalDays}д.";
-    if (showHour) out += " ${hours}г.";
-    return out;
-  } else {
-    int years = n.year - startDate.year;
-    int months = n.month - startDate.month;
-    int days = n.day - startDate.day;
-    int hours = n.hour - startDate.hour;
-    int minutes = n.minute - startDate.minute;
-    if (minutes < 0) { hours--; minutes += 60; }
-    if (hours < 0) { days--; hours += 24; }
-    if (days < 0) { months--; final pMonth = DateTime(n.year, n.month, 0); days += pMonth.day; }
-    if (months < 0) { years--; months += 12; }
-    String out = "${years}р. ${months}міс. ${days}д.";
-    if (showHour) out += " ${hours}г.";
-    return out;
+
+    return showHour ? "${totalDays}д. ${hours}г." : "${totalDays}д.";
   }
+
+  var years = now.year - startDate.year;
+  var months = now.month - startDate.month;
+  var days = now.day - startDate.day;
+  var hours = now.hour - startDate.hour;
+  final minutes = now.minute - startDate.minute;
+  if (minutes < 0) { hours--; }
+  if (hours < 0) { days--; hours += 24; }
+  if (days < 0) {
+    months--;
+    final previousMonth = DateTime(now.year, now.month, 0);
+    days += previousMonth.day;
+  }
+  if (months < 0) { years--; months += 12; }
+
+  final datePart = "${years}р. ${months}м. ${days}д.";
+  return showHour ? "$datePart ${hours}г." : datePart;
+}
+
+String getGlobalAccurateTime(DateTime startDate, bool showDaysOnly, bool showHour) {
+  return formatElapsedTime(startDate, DateTime.now(), showDaysOnly, showHour);
 }
 
 

@@ -15,6 +15,8 @@ import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetProvider
 import java.io.File
 import java.util.Calendar
+import java.util.Locale
+import java.util.TimeZone
 import kotlin.math.max
 
 class WidgetProvider : HomeWidgetProvider() {
@@ -25,14 +27,31 @@ class WidgetProvider : HomeWidgetProvider() {
         private fun float(data: SharedPreferences, key: String, default: Float) = data.getString(key, null)?.toFloatOrNull() ?: default
         private fun int(data: SharedPreferences, key: String, default: Int) = data.getString(key, null)?.toIntOrNull() ?: default
 
+        private fun calendarDateNumber(value: Calendar): Long {
+            // Build a UTC date-only value from the device's local calendar fields.
+            // This avoids treating a 23/25-hour DST day as a different day count.
+            val utcDate = Calendar.getInstance(TimeZone.getTimeZone("UTC"), Locale.US).apply {
+                clear()
+                set(value.get(Calendar.YEAR), value.get(Calendar.MONTH), value.get(Calendar.DAY_OF_MONTH), 0, 0, 0)
+            }
+            return utcDate.timeInMillis / 86_400_000L
+        }
+
         private fun timeText(start: Calendar, now: Calendar, daysOnly: Boolean, showHour: Boolean): String {
             if (daysOnly) {
-                val totalDays = ((now.timeInMillis - start.timeInMillis) / 86_400_000L).toInt() + 1
-                var hours = now.get(Calendar.HOUR_OF_DAY) - start.get(Calendar.HOUR_OF_DAY)
-                val minutes = now.get(Calendar.MINUTE) - start.get(Calendar.MINUTE)
-                if (minutes < 0) hours--
+                val calendarDays = calendarDateNumber(now) - calendarDateNumber(start)
+                val nowHour = now.get(Calendar.HOUR_OF_DAY)
+                val startHour = start.get(Calendar.HOUR_OF_DAY)
+                val nowMinute = now.get(Calendar.MINUTE)
+                val startMinute = start.get(Calendar.MINUTE)
+                val reachedDailyAnniversary =
+                    nowHour > startHour || (nowHour == startHour && nowMinute >= startMinute)
+                val totalDays = calendarDays + if (reachedDailyAnniversary) 1L else 0L
+
+                var hours = nowHour - startHour
+                if (nowMinute - startMinute < 0) hours--
                 if (hours < 0) hours += 24
-                return if (showHour) "${totalDays}р. ${hours}г." else "${totalDays}р."
+                return if (showHour) "${totalDays}д. ${hours}г." else "${totalDays}д."
             }
             var years = now.get(Calendar.YEAR) - start.get(Calendar.YEAR)
             var months = now.get(Calendar.MONTH) - start.get(Calendar.MONTH)
@@ -50,7 +69,7 @@ class WidgetProvider : HomeWidgetProvider() {
                 days += previousMonth.get(Calendar.DAY_OF_MONTH)
             }
             if (months < 0) { years--; months += 12 }
-            return if (showHour) "${years}р. ${months}міс. ${days}д. ${hours}г." else "${years}р. ${months}міс. ${days}д."
+            return if (showHour) "${years}р. ${months}м. ${days}д. ${hours}г." else "${years}р. ${months}м. ${days}д."
         }
 
         private fun startCalendar(year: Int, month: Int, day: Int, hour: Int, minute: Int) =
