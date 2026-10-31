@@ -9,6 +9,8 @@ jobs:
         with:
           channel: stable
       - run: flutter pub get
+      - name: Timer formatter tests
+        run: flutter test test/timer_format_test.dart
       - name: Flutter analyzer gate
         shell: bash
         run: |

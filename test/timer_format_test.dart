@@ -22,7 +22,7 @@ void main() {
       expect(formatElapsedTime(start, now, true, false), '1711д.');
     });
 
-    test('uses calendar dates across DST-length days, not elapsed 24-hour blocks', () {
+    test('uses calendar-date differences rather than elapsed 24-hour blocks', () {
       final dstStart = DateTime(2026, 3, 28, 2, 40);
       final afterDst = DateTime(2026, 3, 29, 2, 40);
       expect(formatElapsedTime(dstStart, afterDst, true, true), '2д. 0г.');
