@@ -60,63 +60,85 @@ void main() async {
   await scheduleNextBackgroundUpdate();
 }
 
+DateTime? nextBackgroundUpdateTime(
+  DateTime now,
+  bool show2022,
+  bool show2014,
+  bool showHour,
+) {
+  final candidates = <DateTime>[];
+
+  void addNextChange(DateTime start) {
+    if (showHour) {
+      var next = DateTime(now.year, now.month, now.day, now.hour, start.minute);
+      if (!next.isAfter(now)) {
+        next = DateTime(now.year, now.month, now.day, now.hour + 1, start.minute);
+      }
+      candidates.add(next);
+    } else {
+      var next = DateTime(now.year, now.month, now.day, start.hour, start.minute);
+      if (!next.isAfter(now)) {
+        next = DateTime(now.year, now.month, now.day + 1, start.hour, start.minute);
+      }
+      candidates.add(next);
+    }
+  }
+
+  if (show2022) addNextChange(DateTime(2022, 2, 24, 2, 40));
+  if (show2014) addNextChange(DateTime(2014, 2, 20, 12, 0));
+  if (candidates.isEmpty) return null;
+  candidates.sort((a, b) => a.compareTo(b));
+  return candidates.first;
+}
+
+Future<bool> scheduleAlarmWithFallback(
+  Future<bool> Function(bool exact) schedule,
+) async {
+  try {
+    if (await schedule(true)) return true;
+  } catch (e) {
+    debugPrint('Exact alarm request failed; trying inexact alarm: $e');
+  }
+
+  // Some Android/plugin failures are reported as false rather than thrown.
+  try {
+    if (await schedule(false)) return true;
+  } catch (e) {
+    debugPrint('Inexact alarm request failed: $e');
+  }
+  return false;
+}
+
 Future<void> scheduleNextBackgroundUpdate() async {
   try {
-    // Replace the previous alarm with one aligned to the next visible counter change.
     await AndroidAlarmManager.cancel(0);
     final prefs = await SharedPreferences.getInstance();
     final show2022 = prefs.getBool('show2022') ?? true;
     final show2014 = prefs.getBool('show2014') ?? false;
     final showHour = prefs.getBool('showHour') ?? true;
     final now = DateTime.now();
-    final candidates = <DateTime>[];
-
-    void addNextChange(DateTime start) {
-      if (showHour) {
-        var next = DateTime(now.year, now.month, now.day, now.hour, start.minute);
-        if (!next.isAfter(now)) {
-          next = DateTime(now.year, now.month, now.day, now.hour + 1, start.minute);
-        }
-        candidates.add(next);
-      } else {
-        var next = DateTime(now.year, now.month, now.day, start.hour, start.minute);
-        if (!next.isAfter(now)) {
-          next = DateTime(now.year, now.month, now.day + 1, start.hour, start.minute);
-        }
-        candidates.add(next);
-      }
-    }
-
-    if (show2022) addNextChange(DateTime(2022, 2, 24, 2, 40));
-    if (show2014) addNextChange(DateTime(2014, 2, 20, 12, 0));
-    if (candidates.isEmpty) {
+    final nextUpdate = nextBackgroundUpdateTime(now, show2022, show2014, showHour);
+    if (nextUpdate == null) {
       debugPrint('No visible counters enabled; background refresh not scheduled.');
       return;
     }
 
-    candidates.sort((a, b) => a.compareTo(b));
-    final nextUpdate = candidates.first;
-    try {
-      await AndroidAlarmManager.oneShotAt(
+    final scheduled = await scheduleAlarmWithFallback((exact) {
+      return AndroidAlarmManager.oneShotAt(
         nextUpdate,
         0,
         backgroundUpdate,
-        exact: true,
+        exact: exact,
         wakeup: true,
         allowWhileIdle: true,
       );
-    } catch (e) {
-      debugPrint('Exact alarm unavailable, using inexact alarm: $e');
-      await AndroidAlarmManager.oneShotAt(
-        nextUpdate,
-        0,
-        backgroundUpdate,
-        exact: false,
-        wakeup: true,
-        allowWhileIdle: true,
-      );
+    });
+
+    if (scheduled) {
+      debugPrint('Next widget refresh scheduled for $nextUpdate');
+    } else {
+      debugPrint('Android rejected both exact and inexact widget alarms for $nextUpdate.');
     }
-    debugPrint('Next widget refresh scheduled for $nextUpdate');
   } catch (e) {
     debugPrint('Background alarm scheduling failed: $e');
   }
@@ -610,7 +632,7 @@ void backgroundUpdate() async {
     final prefs = await SharedPreferences.getInstance();
 
     bool show2022 = prefs.getBool('show2022') ?? true;
-    bool show2014 = prefs.getBool('show2014') ?? true;
+    bool show2014 = prefs.getBool('show2014') ?? false;
     bool showDaysOnly = prefs.getBool('showDaysOnly') ?? false;
     bool showHour = prefs.getBool('showHour') ?? true;
 

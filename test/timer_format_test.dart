@@ -60,3 +60,72 @@ void main() {
     });
   });
 }
+
+
+group('nextBackgroundUpdateTime', () {
+  test('uses :40 for 2022 and :00 for 2014, selecting the next event', () {
+    expect(
+      nextBackgroundUpdateTime(DateTime(2026, 11, 25, 19, 39), true, true, true),
+      DateTime(2026, 11, 25, 19, 40),
+    );
+    expect(
+      nextBackgroundUpdateTime(DateTime(2026, 11, 25, 19, 41), true, true, true),
+      DateTime(2026, 11, 25, 20, 0),
+    );
+  });
+
+  test('uses each event local time for daily updates when hours are hidden', () {
+    expect(
+      nextBackgroundUpdateTime(DateTime(2026, 11, 25, 19, 41), true, true, false),
+      DateTime(2026, 11, 26, 2, 40),
+    );
+    expect(
+      nextBackgroundUpdateTime(DateTime(2026, 11, 25, 11, 0), false, true, false),
+      DateTime(2026, 11, 25, 12, 0),
+    );
+  });
+
+  test('does not schedule when both counters are disabled', () {
+    expect(nextBackgroundUpdateTime(DateTime(2026, 11, 25), false, false, true), isNull);
+  });
+});
+
+test('2014 counter changes from 6 to 7 hours exactly at 19:00', () {
+  final start = DateTime(2014, 2, 20, 12, 0);
+  expect(formatElapsedTime(start, DateTime(2026, 11, 25, 18, 59), false, true), '12р. 9м. 5д. 6г.');
+  expect(formatElapsedTime(start, DateTime(2026, 11, 25, 19, 0), false, true), '12р. 9м. 5д. 7г.');
+});
+
+
+group('scheduleAlarmWithFallback', () {
+  test('falls back when exact alarm returns false', () async {
+    final attempts = <bool>[];
+    final result = await scheduleAlarmWithFallback((exact) async {
+      attempts.add(exact);
+      return !exact;
+    });
+    expect(result, isTrue);
+    expect(attempts, [true, false]);
+  });
+
+  test('does not request inexact alarm when exact succeeds', () async {
+    final attempts = <bool>[];
+    final result = await scheduleAlarmWithFallback((exact) async {
+      attempts.add(exact);
+      return true;
+    });
+    expect(result, isTrue);
+    expect(attempts, [true]);
+  });
+
+  test('falls back after an exact alarm exception and reports total failure', () async {
+    final attempts = <bool>[];
+    final result = await scheduleAlarmWithFallback((exact) async {
+      attempts.add(exact);
+      if (exact) throw StateError('exact alarms unavailable');
+      return false;
+    });
+    expect(result, isFalse);
+    expect(attempts, [true, false]);
+  });
+});
