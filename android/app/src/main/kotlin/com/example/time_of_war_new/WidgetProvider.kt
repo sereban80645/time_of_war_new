@@ -46,7 +46,9 @@ class WidgetProvider : HomeWidgetProvider() {
                 val startMinute = start.get(Calendar.MINUTE)
                 val reachedDailyAnniversary =
                     nowHour > startHour || (nowHour == startHour && nowMinute >= startMinute)
-                val totalDays = calendarDays + if (reachedDailyAnniversary) 1L else 0L
+                // Match Flutter: count completed calendar days, not the ordinal day.
+                val totalDays = if (reachedDailyAnniversary) calendarDays
+                    else (calendarDays - 1L).coerceAtLeast(0L)
 
                 var hours = nowHour - startHour
                 if (nowMinute - startMinute < 0) hours--

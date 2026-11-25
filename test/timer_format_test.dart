@@ -5,27 +5,38 @@ void main() {
   group('formatElapsedTime — day-count mode', () {
     final start = DateTime.utc(2022, 2, 24, 2, 40);
 
-    test('counts the event day only after its local anniversary time', () {
+    test('counts completed days and advances at the local anniversary time', () {
       expect(
         formatElapsedTime(start, DateTime.utc(2026, 10, 31, 2, 39), true, true),
-        '1710д. 23г.',
+        '1709д. 23г.',
       );
       expect(
         formatElapsedTime(start, DateTime.utc(2026, 10, 31, 2, 40), true, true),
-        '1711д. 0г.',
+        '1710д. 0г.',
       );
     });
 
     test('hiding hours changes only the text, not the day count', () {
       final now = DateTime.utc(2026, 10, 31, 17, 40);
-      expect(formatElapsedTime(start, now, true, true), '1711д. 15г.');
-      expect(formatElapsedTime(start, now, true, false), '1711д.');
+      expect(formatElapsedTime(start, now, true, true), '1710д. 15г.');
+      expect(formatElapsedTime(start, now, true, false), '1710д.');
+    });
+
+    test('matches 1735 completed days on 2026-11-25 at 19:30', () {
+      final now = DateTime.utc(2026, 11, 25, 19, 30);
+      expect(formatElapsedTime(start, now, true, true), '1735д. 16г.');
+      expect(formatElapsedTime(start, now, false, true), '4р. 9м. 1д. 16г.');
+    });
+
+    test('the 2022 start boundary is exactly 02:40:00', () {
+      expect(formatElapsedTime(start, DateTime.utc(2026, 10, 31, 2, 39, 59), true, true), '1709д. 23г.');
+      expect(formatElapsedTime(start, DateTime.utc(2026, 10, 31, 2, 40, 0), true, true), '1710д. 0г.');
     });
 
     test('uses calendar-date differences rather than elapsed 24-hour blocks', () {
       final dstStart = DateTime(2026, 3, 28, 2, 40);
       final afterDst = DateTime(2026, 3, 29, 2, 40);
-      expect(formatElapsedTime(dstStart, afterDst, true, true), '2д. 0г.');
+      expect(formatElapsedTime(dstStart, afterDst, true, true), '1д. 0г.');
     });
   });
 

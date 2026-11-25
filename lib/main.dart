@@ -20,7 +20,12 @@ String formatElapsedTime(DateTime startDate, DateTime now, bool showDaysOnly, bo
     final reachedDailyAnniversary =
         now.hour > startDate.hour ||
         (now.hour == startDate.hour && now.minute >= startDate.minute);
-    final totalDays = calendarDays + (reachedDailyAnniversary ? 1 : 0);
+    // Count completed elapsed calendar days, not the current ordinal day.
+    // Before the event's local time-of-day anniversary, today's date is not
+    // yet a full additional day. Clamp the pre-start case to zero.
+    final totalDays = reachedDailyAnniversary
+        ? calendarDays
+        : (calendarDays > 0 ? calendarDays - 1 : 0);
 
     var hours = now.hour - startDate.hour;
     final minutes = now.minute - startDate.minute;
@@ -661,9 +666,28 @@ void backgroundUpdate() async {
       return;
     }
 
-    await HomeWidget.saveWidgetData('widget_background_source_path', imagePath);
-    await HomeWidget.saveWidgetData('widget_background_opacity', opacity);
-    await HomeWidget.saveWidgetData('widget_background_color', Color.fromRGBO(br, bg, bb, 1.0).value);
+    await Future.wait([
+      HomeWidget.saveWidgetData('widget_background_source_path', imagePath),
+      HomeWidget.saveWidgetData('widget_background_opacity', opacity),
+      HomeWidget.saveWidgetData('widget_background_color', Color.fromRGBO(br, bg, bb, 1.0).value),
+      // Keep the native RemoteViews provider in lockstep with Flutter settings.
+      HomeWidget.saveWidgetData('native_show2022', show2022.toString()),
+      HomeWidget.saveWidgetData('native_show2014', show2014.toString()),
+      HomeWidget.saveWidgetData('native_showHour', showHour.toString()),
+      HomeWidget.saveWidgetData('native_showDaysOnly', showDaysOnly.toString()),
+      HomeWidget.saveWidgetData('native_fontSize', fontSize.toString()),
+      HomeWidget.saveWidgetData('native_strokeWidth', strokeWidth.toString()),
+      HomeWidget.saveWidgetData('native_opacity', opacity.toString()),
+      HomeWidget.saveWidgetData('native_br', br.toString()),
+      HomeWidget.saveWidgetData('native_bg', bg.toString()),
+      HomeWidget.saveWidgetData('native_bb', bb.toString()),
+      HomeWidget.saveWidgetData('native_tr', tr.toString()),
+      HomeWidget.saveWidgetData('native_tg', tg.toString()),
+      HomeWidget.saveWidgetData('native_tb', tb.toString()),
+      HomeWidget.saveWidgetData('native_sr', sr.toString()),
+      HomeWidget.saveWidgetData('native_sg', sg.toString()),
+      HomeWidget.saveWidgetData('native_sb', sb.toString()),
+    ]);
 
     await HomeWidget.renderFlutterWidget(
       TimeOfWarWidgetRender(
